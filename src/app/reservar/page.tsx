@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { BookingBoard } from "@/components/booking/booking-board";
-import { DiagonalSection, SectionHeading } from "@/components/layout/diagonal-section";
+import { DiagonalSection } from "@/components/layout/diagonal-section";
 import {
   findNextAvailableHour,
   parseSportParam,
@@ -32,10 +32,7 @@ export default async function ReservarPage({
     typeof params.cancha === "string" && params.cancha ? params.cancha : undefined;
 
   const date = parseDateInput(fecha);
-  const availability = await getAvailabilityForDate(
-    date.toISOString(),
-    deporte,
-  );
+  const availability = await getAvailabilityForDate(date.toISOString());
 
   let hora =
     typeof params.hora === "string" && params.hora ? params.hora : undefined;
@@ -44,13 +41,8 @@ export default async function ReservarPage({
   }
 
   return (
-    <DiagonalSection tone="muted" className="py-10 sm:py-14">
+    <DiagonalSection tone="muted" className="py-6 sm:py-8">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <SectionHeading
-          eyebrow="Reservas online"
-          title="Elegí tu cancha"
-          description="Seleccioná fecha, deporte y horario. Tocá una cancha en el plano para ver disponibilidad y continuar."
-        />
         <BookingBoard
           venue={availability.venue}
           courts={availability.courts}

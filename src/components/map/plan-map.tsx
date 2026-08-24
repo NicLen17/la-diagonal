@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import type { Court, CourtAvailabilitySummary, Venue } from "@/lib/data/types";
+import type { Court, CourtAvailabilitySummary, Sport, Venue } from "@/lib/data/types";
 import { SPORT_LABELS } from "@/lib/data/types";
 import { formatArs } from "@/lib/services/pricing";
 
@@ -11,6 +11,7 @@ export type PlanCourtState = {
   court: Court;
   summary?: CourtAvailabilitySummary;
   selected?: boolean;
+  dimmed?: boolean;
 };
 
 type PlanMapProps = {
@@ -20,6 +21,7 @@ type PlanMapProps = {
   selectedHourLabel?: string | null;
   onSelectCourt?: (courtId: string) => void;
   selectedCourtId?: string | null;
+  highlightSport?: Sport;
   className?: string;
 };
 
@@ -57,6 +59,7 @@ export function PlanMap({
   selectedHourLabel,
   onSelectCourt,
   selectedCourtId,
+  highlightSport,
   className,
 }: PlanMapProps) {
   const aspect = venue.planWidthM / venue.planLengthM;
@@ -72,16 +75,19 @@ export function PlanMap({
       aria-label="Plano del predio"
     >
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-navy-800/40 to-navy-950/60" />
-      {courts.map(({ court, summary, selected }) => {
+      {courts.map(({ court, summary, selected, dimmed }) => {
         const status = statusFor(summary, selectedHourLabel);
         const isSelected = selected || selectedCourtId === court.id;
+        const isDimmed =
+          dimmed ||
+          (highlightSport !== undefined && court.sport !== highlightSport);
         const left = (court.planX_m / venue.planWidthM) * 100;
         const top = (court.planY_m / venue.planLengthM) * 100;
         const width = (court.planWidthM / venue.planWidthM) * 100;
         const height = (court.planLengthM / venue.planLengthM) * 100;
 
         const commonClass = cn(
-          "absolute flex flex-col items-center justify-center gap-0.5 rounded-md border-2 p-1 text-center transition",
+          "absolute flex flex-col items-center justify-center gap-0.5 rounded-md border-2 p-1 text-center transition-all duration-300",
           "focus-visible:ring-2 focus-visible:ring-lime-400 focus-visible:outline-none",
           status.tone === "available" &&
             "border-lime-400/80 bg-lime-400/35 text-white hover:bg-lime-400/50",
@@ -91,7 +97,9 @@ export function PlanMap({
             "border-amber-400/80 bg-amber-400/35 text-white hover:bg-amber-400/50",
           status.tone === "neutral" &&
             "border-white/30 bg-white/10 text-white hover:bg-white/20",
-          isSelected && "ring-2 ring-lime-400 ring-offset-2 ring-offset-navy-900",
+          isSelected && "z-10 ring-2 ring-lime-400 ring-offset-2 ring-offset-navy-900",
+          isDimmed && !isSelected && "opacity-30 saturate-50",
+          !isDimmed && "opacity-100",
           mode === "preview" && "pointer-events-none",
         );
 
@@ -149,10 +157,12 @@ export function PlanListView({
   courts,
   onSelectCourt,
   selectedCourtId,
+  highlightSport,
 }: {
   courts: PlanCourtState[];
   onSelectCourt?: (courtId: string) => void;
   selectedCourtId?: string | null;
+  highlightSport?: Sport;
 }) {
   return (
     <div className="overflow-hidden rounded-xl border">
@@ -168,12 +178,15 @@ export function PlanListView({
         <tbody>
           {courts.map(({ court, summary }) => {
             const status = statusFor(summary, null);
+            const isDimmed =
+              highlightSport !== undefined && court.sport !== highlightSport;
             return (
               <tr
                 key={court.id}
                 className={cn(
-                  "border-t cursor-pointer hover:bg-accent/40",
+                  "border-t cursor-pointer transition-opacity hover:bg-accent/40",
                   selectedCourtId === court.id && "bg-accent",
+                  isDimmed && selectedCourtId !== court.id && "opacity-40",
                 )}
                 onClick={() => onSelectCourt?.(court.id)}
                 onKeyDown={(e) => {

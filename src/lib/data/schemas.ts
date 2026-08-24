@@ -26,7 +26,13 @@ export const surfaceSchema = z.enum([
 
 export const customerInputSchema = z.object({
   fullName: z.string().min(2, "Ingresá tu nombre completo"),
-  email: z.email("Email inválido"),
+  email: z
+    .string()
+    .trim()
+    .refine(
+      (value) => value === "" || z.email().safeParse(value).success,
+      "Email inválido",
+    ),
   phone: z
     .string()
     .min(8, "Teléfono inválido")

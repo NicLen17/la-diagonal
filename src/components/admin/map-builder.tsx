@@ -11,7 +11,11 @@ import {
   upsertCourt,
 } from "@/lib/services/admin-actions";
 import { formatArs } from "@/lib/services/pricing";
-import { useDraggableRect, type RectMeters } from "@/hooks/use-draggable-rect";
+import {
+  useDraggableRect,
+  type RectMeters,
+  type ResizeCorner,
+} from "@/hooks/use-draggable-rect";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,6 +88,38 @@ function newDraftCourt(venue: Venue, courts: Court[]): DraftCourt {
   };
 }
 
+const RESIZE_HANDLES: {
+  corner: ResizeCorner;
+  position: string;
+  cursor: string;
+  label: string;
+}[] = [
+  {
+    corner: "nw",
+    position: "top-0 left-0",
+    cursor: "cursor-nwse-resize",
+    label: "Redimensionar esquina superior izquierda",
+  },
+  {
+    corner: "ne",
+    position: "top-0 right-0",
+    cursor: "cursor-nesw-resize",
+    label: "Redimensionar esquina superior derecha",
+  },
+  {
+    corner: "sw",
+    position: "bottom-0 left-0",
+    cursor: "cursor-nesw-resize",
+    label: "Redimensionar esquina inferior izquierda",
+  },
+  {
+    corner: "se",
+    position: "bottom-0 right-0",
+    cursor: "cursor-nwse-resize",
+    label: "Redimensionar esquina inferior derecha",
+  },
+];
+
 function EditableCourtRect({
   draft,
   venue,
@@ -99,13 +135,13 @@ function EditableCourtRect({
   onSelect: () => void;
   onPlanChange: (plan: RectMeters) => void;
 }) {
-  const { onPointerDownMove, onPointerDownResize, onPointerMove, onPointerUp } =
+  const { onPointerDownMove, onPointerDownResize } =
     useDraggableRect({
       rect: draft.plan,
       onChange: onPlanChange,
       venueWidthM: venue.planWidthM,
       venueLengthM: venue.planLengthM,
-      enabled: selected,
+      keyboardEnabled: selected,
       containerRef: mapContainerRef,
     });
 
@@ -117,7 +153,7 @@ function EditableCourtRect({
   return (
     <div
       className={cn(
-        "absolute flex touch-none flex-col items-center justify-center rounded-md border-2 p-1 text-center text-white transition",
+        "group absolute flex select-none flex-col items-center justify-center rounded-md border-2 p-1 text-center text-white transition",
         selected
           ? "border-lime-400 bg-lime-400/40 ring-2 ring-lime-400 ring-offset-2 ring-offset-navy-900"
           : "border-white/40 bg-white/15 hover:bg-white/25",
@@ -130,29 +166,46 @@ function EditableCourtRect({
         transform: draft.plan.rotation
           ? `rotate(${draft.plan.rotation}deg)`
           : undefined,
+        userSelect: "none",
       }}
-      onPointerDown={(e) => {
-        onSelect();
-        onPointerDownMove(e);
-      }}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
-      tabIndex={selected ? 0 : -1}
-      role="button"
+      role="group"
       aria-label={draft.name}
-      aria-pressed={selected}
+      data-selected={selected}
     >
-      <span className="pointer-events-none font-display text-[10px] uppercase sm:text-xs">
+      <div
+        className="absolute inset-0 z-0 cursor-grab touch-none active:cursor-grabbing"
+        role="button"
+        tabIndex={selected ? 0 : -1}
+        aria-label={`Mover ${draft.name}`}
+        aria-pressed={selected}
+        onPointerDown={(e) => {
+          onSelect();
+          onPointerDownMove(e);
+        }}
+        onDragStart={(e) => e.preventDefault()}
+      />
+      <span className="pointer-events-none relative z-[1] select-none font-display text-[10px] uppercase sm:text-xs">
         {draft.name}
       </span>
-      {selected && (
+      {RESIZE_HANDLES.map((handle) => (
         <span
-          className="absolute right-0 bottom-0 size-4 cursor-se-resize rounded-sm border border-lime-400 bg-lime-400"
-          onPointerDown={onPointerDownResize}
-          aria-label="Redimensionar"
+          key={handle.corner}
+          role="button"
+          aria-label={handle.label}
+          className={cn(
+            "absolute z-10 size-6 touch-none rounded-sm border shadow-sm",
+            handle.position,
+            handle.cursor,
+            selected
+              ? "border-lime-400 bg-lime-400"
+              : "border-white/70 bg-white/80",
+          )}
+          onPointerDown={(e) => {
+            onSelect();
+            onPointerDownResize(e, handle.corner);
+          }}
         />
-      )}
+      ))}
     </div>
   );
 }
@@ -355,7 +408,7 @@ export function MapBuilder({
 
         <div
           ref={mapContainerRef}
-          className="relative w-full overflow-hidden rounded-2xl border border-navy-800/20 bg-navy-900 bg-field-lines shadow-lg"
+          className="relative w-full select-none overflow-hidden rounded-2xl border border-navy-800/20 bg-navy-900 bg-field-lines shadow-lg"
           style={{ aspectRatio: `${aspect}` }}
         >
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-navy-800/40 to-navy-950/60" />
@@ -389,18 +442,20 @@ export function MapBuilder({
         </div>
       </div>
 
-      <Card className="h-fit xl:sticky xl:top-6">
-        <CardHeader>
-          <CardTitle>Inspector</CardTitle>
+      <Card className="h-fit overflow-hidden border shadow-sm xl:sticky xl:top-6">
+        <CardHeader className="space-y-1.5 border-b bg-muted/20 px-5 py-4">
+          <CardTitle className="font-display text-lg uppercase tracking-wide">
+            Inspector
+          </CardTitle>
           <CardDescription>
             Editá propiedades y posición (flechas: 1 m, Shift: 0,1 m)
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4 px-5 py-5">
           {selectedDraft ? (
             <>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
+              <div className="grid grid-cols-2 gap-3 rounded-xl border bg-muted/30 p-3">
+                <div className="space-y-2">
                   <Label>X (m)</Label>
                   <Input
                     type="number"
@@ -414,7 +469,7 @@ export function MapBuilder({
                     }
                   />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <Label>Y (m)</Label>
                   <Input
                     type="number"
@@ -428,7 +483,7 @@ export function MapBuilder({
                     }
                   />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <Label>Ancho (m)</Label>
                   <Input
                     type="number"
@@ -442,7 +497,7 @@ export function MapBuilder({
                     }
                   />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <Label>Largo (m)</Label>
                   <Input
                     type="number"
@@ -456,7 +511,7 @@ export function MapBuilder({
                     }
                   />
                 </div>
-                <div className="col-span-2 space-y-1">
+                <div className="col-span-2 space-y-2">
                   <Label>Rotación (°)</Label>
                   <Input
                     type="number"
@@ -471,7 +526,7 @@ export function MapBuilder({
                 </div>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label>Nombre</Label>
                 <Input
                   value={selectedDraft.name}
@@ -479,7 +534,7 @@ export function MapBuilder({
                 />
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label>Deporte</Label>
                 <Select
                   value={selectedDraft.sport}
@@ -487,7 +542,7 @@ export function MapBuilder({
                     updateSelected({ sport: v as Sport })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -500,7 +555,7 @@ export function MapBuilder({
                 </Select>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label>Descripción</Label>
                 <Textarea
                   value={selectedDraft.description}
@@ -511,7 +566,7 @@ export function MapBuilder({
                 />
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label>Precio base ({formatArs(selectedDraft.basePriceArs)})</Label>
                 <Input
                   type="number"
@@ -522,7 +577,7 @@ export function MapBuilder({
                 />
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label>Duración turno (min)</Label>
                 <Input
                   type="number"
@@ -535,18 +590,20 @@ export function MapBuilder({
                 />
               </div>
 
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={selectedDraft.isActive}
-                  onCheckedChange={(v) =>
-                    updateSelected({ isActive: v === true })
-                  }
-                />
-                Cancha activa
-              </label>
+              <div className="rounded-xl border bg-muted/30 p-3">
+                <label className="flex cursor-pointer items-center gap-3 text-sm">
+                  <Checkbox
+                    checked={selectedDraft.isActive}
+                    onCheckedChange={(v) =>
+                      updateSelected({ isActive: v === true })
+                    }
+                  />
+                  Cancha activa
+                </label>
+              </div>
 
-              <div className="flex flex-col gap-2 pt-2">
-                <Button onClick={saveCourt} disabled={pending}>
+              <div className="flex flex-col gap-2 border-t pt-4">
+                <Button onClick={saveCourt} disabled={pending} className="h-10">
                   Guardar cancha
                 </Button>
                 <Button
@@ -559,7 +616,7 @@ export function MapBuilder({
               </div>
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">
+            <p className="rounded-xl border border-dashed bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
               Seleccioná una cancha en el mapa o agregá una nueva
             </p>
           )}

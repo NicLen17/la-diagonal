@@ -1,4 +1,6 @@
 import { Contact } from "@/components/landing/contact";
+import { EscuelitaSection } from "@/components/landing/escuelita-section";
+import { BarSection } from "@/components/landing/bar-section";
 import { Hero } from "@/components/landing/hero";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { MapPreview } from "@/components/landing/map-preview";
@@ -20,7 +22,7 @@ export default async function HomePage() {
     "@type": "SportsActivityLocation",
     name: venue.name,
     description:
-      "Complejo deportivo en Tafí Viejo con canchas de fútbol 5, 7, 9, 11, futsal, handball y pádel.",
+      "Complejo deportivo en Tafí Viejo con canchas de fútbol 5, 7, 9, 11, futsal, handball y pádel. Escuelita formativa infantil y Bar Tercer Tiempo.",
     url: "https://ladiagonal.com.ar",
     telephone: `+${venue.phoneE164.replace(/\D/g, "")}`,
     address: {
@@ -46,7 +48,11 @@ export default async function HomePage() {
         closes: "00:00",
       },
     ],
-    sameAs: [venue.instagramUrl, venue.facebookUrl],
+    sameAs: [
+      venue.instagramUrl,
+      venue.facebookUrl,
+      "https://instagram.com/ladiagonal.reddecomplejos",
+    ],
     aggregateRating: {
       "@type": "AggregateRating",
       ratingValue: "4.4",
@@ -64,6 +70,8 @@ export default async function HomePage() {
       <Hero venue={venue} />
       <TrustBar venue={venue} />
       <SportsGrid />
+      <EscuelitaSection />
+      <BarSection />
       <HowItWorks />
       <MapPreview venue={venue} courts={courts} />
       <Services />

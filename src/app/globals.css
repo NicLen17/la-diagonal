@@ -20,6 +20,8 @@
   --color-lime-400: #9be414;
   --color-lime-300: #b8f04a;
   --color-gold-400: #f2b72e;
+  --color-bar-crimson: #d93829;
+  --color-bar-orange: #f26419;
   --color-available: #9be414;
   --color-occupied: #ef4444;
   --color-partial: #f59e0b;
@@ -184,12 +186,29 @@
     animation-delay: 0.3s;
   }
 
-  @supports (animation-timeline: view()) {
-    .reveal-on-scroll {
-      animation: reveal-up 0.7s var(--ease-fluid) both;
-      animation-timeline: view();
-      animation-range: entry 0% entry 40%;
-    }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .glass-navy {
+    background-color: rgb(11 37 69 / 85%);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgb(255 255 255 / 10%);
+  }
+
+  .glass-card {
+    background-color: rgb(6 22 39 / 80%);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgb(255 255 255 / 12%);
+  }
+
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
   }
 }
 

@@ -28,10 +28,19 @@ type Store = {
   reservations: typeof seedReservations;
 };
 
-const globalForStore = globalThis as unknown as { __laDiagonalStore?: Store };
+/** Bump when seed court plan geometry changes so the in-memory store reloads. */
+const STORE_LAYOUT_VERSION = 2;
+
+const globalForStore = globalThis as unknown as {
+  __laDiagonalStore?: Store;
+  __laDiagonalStoreLayout?: number;
+};
 
 function getStore(): Store {
-  if (!globalForStore.__laDiagonalStore) {
+  if (
+    !globalForStore.__laDiagonalStore ||
+    globalForStore.__laDiagonalStoreLayout !== STORE_LAYOUT_VERSION
+  ) {
     globalForStore.__laDiagonalStore = {
       venue: structuredClone(seedVenue),
       hours: structuredClone(seedHours),
@@ -41,6 +50,7 @@ function getStore(): Store {
       customers: structuredClone(seedCustomers),
       reservations: structuredClone(seedReservations),
     };
+    globalForStore.__laDiagonalStoreLayout = STORE_LAYOUT_VERSION;
   }
   return globalForStore.__laDiagonalStore;
 }
@@ -326,14 +336,20 @@ export const mockDataAccess: DataAccess = {
         throw new Error("El hold expiró. Elegí el turno de nuevo.");
       }
 
-      let customer = store.customers.find(
-        (c) => c.email.toLowerCase() === customerInput.email.toLowerCase(),
-      );
+      let customer =
+        customerInput.email.trim() !== ""
+          ? store.customers.find(
+              (c) =>
+                c.email.toLowerCase() === customerInput.email.toLowerCase(),
+            )
+          : store.customers.find(
+              (c) => c.phoneE164 === normalizePhone(customerInput.phone),
+            );
       if (!customer) {
         customer = {
           id: uid("cust"),
           fullName: customerInput.fullName,
-          email: customerInput.email,
+          email: customerInput.email.trim(),
           phoneE164: normalizePhone(customerInput.phone),
           authUserId: null,
           createdAt: new Date().toISOString(),
@@ -342,6 +358,9 @@ export const mockDataAccess: DataAccess = {
       } else {
         customer.fullName = customerInput.fullName;
         customer.phoneE164 = normalizePhone(customerInput.phone);
+        if (customerInput.email.trim()) {
+          customer.email = customerInput.email.trim();
+        }
       }
 
       store.reservations[idx] = {

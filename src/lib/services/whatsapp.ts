@@ -42,8 +42,11 @@ export function buildReservationMessage(
     `*Reservante*`,
     `${reservation.customer.fullName}`,
     `${reservation.customer.phoneE164}`,
-    `${reservation.customer.email}`,
   );
+
+  if (reservation.customer.email) {
+    lines.push(reservation.customer.email);
+  }
 
   if (reservation.receiptFileName) {
     lines.push(``, `📎 Comprobante: ${reservation.receiptFileName}`);

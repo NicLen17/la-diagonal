@@ -10,7 +10,6 @@ import { formatArs } from "@/lib/services/pricing";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -21,13 +20,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import {
   Table,
   TableBody,
   TableCell,
@@ -35,6 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AdminField, AdminFormSheet } from "@/components/admin/admin-form-sheet";
 
 type CourtFormState = {
   id?: string;
@@ -197,100 +190,93 @@ export function CourtsTable({ courts }: { courts: Court[] }) {
         </Table>
       </div>
 
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent className="overflow-y-auto sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle>{form.id ? "Editar cancha" : "Nueva cancha"}</SheetTitle>
-            <SheetDescription>
-              Datos de la cancha y posición en el plano
-            </SheetDescription>
-          </SheetHeader>
-          <div className="mt-6 space-y-4">
-            <div className="space-y-1">
-              <Label>Nombre</Label>
-              <Input
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Deporte</Label>
-              <Select
-                value={form.sport}
-                onValueChange={(v) =>
-                  setForm({ ...form, sport: v as Sport })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(SPORT_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label>Descripción</Label>
-              <Textarea
-                value={form.description}
-                onChange={(e) =>
-                  setForm({ ...form, description: e.target.value })
-                }
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Precio base</Label>
-                <Input
-                  type="number"
-                  value={form.basePriceArs}
-                  onChange={(e) =>
-                    setForm({ ...form, basePriceArs: Number(e.target.value) })
-                  }
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>Duración (min)</Label>
-                <Input
-                  type="number"
-                  value={form.slotDurationMinutes}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      slotDurationMinutes: Number(e.target.value),
-                    })
-                  }
-                />
-              </div>
-            </div>
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox
-                checked={form.isActive}
-                onCheckedChange={(v) =>
-                  setForm({ ...form, isActive: v === true })
-                }
-              />
-              Cancha activa
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox
-                checked={form.hasLights}
-                onCheckedChange={(v) =>
-                  setForm({ ...form, hasLights: v === true })
-                }
-              />
-              Iluminación
-            </label>
-            <Button onClick={save} disabled={pending} className="w-full">
-              Guardar
-            </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
+      <AdminFormSheet
+        open={open}
+        onOpenChange={setOpen}
+        title={form.id ? "Editar cancha" : "Nueva cancha"}
+        description="Datos de la cancha y posición en el plano"
+        footer={
+          <Button onClick={save} disabled={pending} className="h-11 w-full">
+            Guardar
+          </Button>
+        }
+      >
+        <AdminField label="Nombre">
+          <Input
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+        </AdminField>
+        <AdminField label="Deporte">
+          <Select
+            value={form.sport}
+            onValueChange={(v) => setForm({ ...form, sport: v as Sport })}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(SPORT_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </AdminField>
+        <AdminField label="Descripción">
+          <Textarea
+            value={form.description}
+            onChange={(e) =>
+              setForm({ ...form, description: e.target.value })
+            }
+            className="min-h-24"
+          />
+        </AdminField>
+        <div className="grid grid-cols-2 gap-4">
+          <AdminField label="Precio base">
+            <Input
+              type="number"
+              value={form.basePriceArs}
+              onChange={(e) =>
+                setForm({ ...form, basePriceArs: Number(e.target.value) })
+              }
+            />
+          </AdminField>
+          <AdminField label="Duración (min)">
+            <Input
+              type="number"
+              value={form.slotDurationMinutes}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  slotDurationMinutes: Number(e.target.value),
+                })
+              }
+            />
+          </AdminField>
+        </div>
+        <div className="space-y-3 rounded-xl border bg-muted/30 p-4">
+          <label className="flex cursor-pointer items-center gap-3 text-sm transition-colors hover:text-foreground">
+            <Checkbox
+              checked={form.isActive}
+              onCheckedChange={(v) =>
+                setForm({ ...form, isActive: v === true })
+              }
+            />
+            Cancha activa
+          </label>
+          <label className="flex cursor-pointer items-center gap-3 text-sm transition-colors hover:text-foreground">
+            <Checkbox
+              checked={form.hasLights}
+              onCheckedChange={(v) =>
+                setForm({ ...form, hasLights: v === true })
+              }
+            />
+            Iluminación
+          </label>
+        </div>
+      </AdminFormSheet>
     </>
   );
 }

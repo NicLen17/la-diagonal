@@ -83,7 +83,7 @@ export async function updateReservationStatusAction(
   return reservation;
 }
 
-export async function getAvailabilityForDate(dateIso: string, sport?: string) {
+export async function getAvailabilityForDate(dateIso: string) {
   const db = getDataAccess();
   const venue = await db.venues.getDefaultVenue();
   const [courts, hours, reservations, closures, rules] = await Promise.all([
@@ -99,16 +99,14 @@ export async function getAvailabilityForDate(dateIso: string, sport?: string) {
   ]);
 
   const date = new Date(dateIso);
-  const filtered = courts.filter(
-    (c) => c.isActive && (!sport || c.sport === sport),
-  );
+  const activeCourts = courts.filter((c) => c.isActive);
 
   return {
     venue,
-    courts: filtered,
+    courts: activeCourts,
     rules,
     slotsByCourt: Object.fromEntries(
-      filtered.map((court) => [
+      activeCourts.map((court) => [
         court.id,
         generateSlots({
           court,

@@ -22,13 +22,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import {
   Table,
   TableBody,
   TableCell,
@@ -43,6 +36,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { AdminField, AdminFormSheet } from "@/components/admin/admin-form-sheet";
+import { cn } from "@/lib/utils";
 
 type RuleForm = {
   id?: string;
@@ -284,135 +279,132 @@ export function PriceRulesManager({
         </CardContent>
       </Card>
 
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent className="overflow-y-auto sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle>{form.id ? "Editar regla" : "Nueva regla"}</SheetTitle>
-            <SheetDescription>
-              Reglas de precio por día, horario y cancha
-            </SheetDescription>
-          </SheetHeader>
-          <div className="mt-6 space-y-4">
-            <div className="space-y-1">
-              <Label>Nombre</Label>
-              <Input
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>Cancha</Label>
-              <Select
-                value={form.courtId ?? "all"}
-                onValueChange={(v) =>
-                  setForm({ ...form, courtId: v === "all" ? null : v })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las canchas</SelectItem>
-                  {courts.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Días</Label>
-              <div className="flex flex-wrap gap-2">
-                {DAY_LABELS.map((label, day) => (
-                  <label
-                    key={label}
-                    className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs"
-                  >
-                    <Checkbox
-                      checked={form.daysOfWeek.includes(day)}
-                      onCheckedChange={() => toggleDay(day)}
-                    />
-                    {label.slice(0, 3)}
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Desde</Label>
-                <Input
-                  type="time"
-                  value={form.startsAt}
-                  onChange={(e) =>
-                    setForm({ ...form, startsAt: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>Hasta</Label>
-                <Input
-                  type="time"
-                  value={form.endsAt}
-                  onChange={(e) => setForm({ ...form, endsAt: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>Precio fijo (opcional)</Label>
-                <Input
-                  type="number"
-                  value={form.priceArs ?? ""}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      priceArs: e.target.value ? Number(e.target.value) : null,
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>Recargo (opcional)</Label>
-                <Input
-                  type="number"
-                  value={form.surchargeArs ?? ""}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      surchargeArs: e.target.value
-                        ? Number(e.target.value)
-                        : null,
-                    })
-                  }
-                />
-              </div>
-            </div>
-            <div className="space-y-1">
-              <Label>Prioridad</Label>
-              <Input
-                type="number"
-                value={form.priority}
-                onChange={(e) =>
-                  setForm({ ...form, priority: Number(e.target.value) })
-                }
-              />
-            </div>
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox
-                checked={form.isActive}
-                onCheckedChange={(v) =>
-                  setForm({ ...form, isActive: v === true })
-                }
-              />
-              Regla activa
-            </label>
-            <Button onClick={save} disabled={pending} className="w-full">
-              Guardar
-            </Button>
+      <AdminFormSheet
+        open={open}
+        onOpenChange={setOpen}
+        title={form.id ? "Editar regla" : "Nueva regla"}
+        description="Reglas de precio por día, horario y cancha"
+        footer={
+          <Button onClick={save} disabled={pending} className="h-11 w-full">
+            Guardar
+          </Button>
+        }
+      >
+        <AdminField label="Nombre">
+          <Input
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+        </AdminField>
+        <AdminField label="Cancha">
+          <Select
+            value={form.courtId ?? "all"}
+            onValueChange={(v) =>
+              setForm({ ...form, courtId: v === "all" ? null : v })
+            }
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las canchas</SelectItem>
+              {courts.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </AdminField>
+        <AdminField label="Días">
+          <div className="flex flex-wrap gap-2">
+            {DAY_LABELS.map((label, day) => {
+              const selected = form.daysOfWeek.includes(day);
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => toggleDay(day)}
+                  className={cn(
+                    "rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                    selected
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "bg-background hover:border-primary/40 hover:bg-muted",
+                  )}
+                >
+                  {label.slice(0, 3)}
+                </button>
+              );
+            })}
           </div>
-        </SheetContent>
-      </Sheet>
+        </AdminField>
+        <div className="grid grid-cols-2 gap-4">
+          <AdminField label="Desde">
+            <Input
+              type="time"
+              value={form.startsAt}
+              onChange={(e) =>
+                setForm({ ...form, startsAt: e.target.value })
+              }
+            />
+          </AdminField>
+          <AdminField label="Hasta">
+            <Input
+              type="time"
+              value={form.endsAt}
+              onChange={(e) => setForm({ ...form, endsAt: e.target.value })}
+            />
+          </AdminField>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <AdminField label="Precio fijo (opcional)">
+            <Input
+              type="number"
+              value={form.priceArs ?? ""}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  priceArs: e.target.value ? Number(e.target.value) : null,
+                })
+              }
+            />
+          </AdminField>
+          <AdminField label="Recargo (opcional)">
+            <Input
+              type="number"
+              value={form.surchargeArs ?? ""}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  surchargeArs: e.target.value
+                    ? Number(e.target.value)
+                    : null,
+                })
+              }
+            />
+          </AdminField>
+        </div>
+        <AdminField label="Prioridad">
+          <Input
+            type="number"
+            value={form.priority}
+            onChange={(e) =>
+              setForm({ ...form, priority: Number(e.target.value) })
+            }
+          />
+        </AdminField>
+        <div className="rounded-xl border bg-muted/30 p-4">
+          <label className="flex cursor-pointer items-center gap-3 text-sm transition-colors hover:text-foreground">
+            <Checkbox
+              checked={form.isActive}
+              onCheckedChange={(v) =>
+                setForm({ ...form, isActive: v === true })
+              }
+            />
+            Regla activa
+          </label>
+        </div>
+      </AdminFormSheet>
     </div>
   );
 }
