@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   CalendarDaysIcon,
   ChevronRightIcon,
@@ -34,10 +34,13 @@ import {
   buildBookingSearchParams,
   collectHourLabels,
   findStartsAtForHour,
+  parseSportParam,
+  parseViewParam,
   type BookingView,
 } from "@/lib/services/booking-helpers";
 import { formatArs } from "@/lib/services/pricing";
 import { createHoldAction } from "@/lib/services/reservations";
+import { venueDateKey } from "@/lib/services/venue-time";
 import { cn } from "@/lib/utils";
 
 type BookingBoardProps = {
@@ -54,14 +57,11 @@ type BookingBoardProps = {
 // Generates next 7 days for the fast date carousel
 function getNextSevenDays() {
   const days = [];
-  const today = new Date();
+  const today = new Date(`${venueDateKey(new Date())}T12:00:00-03:00`);
   for (let i = 0; i < 7; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    const isoDate = `${yyyy}-${mm}-${dd}`;
+    const isoDate = venueDateKey(d);
 
     let label = "";
     if (i === 0) label = "Hoy";
@@ -87,22 +87,28 @@ export function BookingBoard({
   venue,
   courts,
   slotsByCourt,
-  initialFecha,
-  initialDeporte,
-  initialHora,
-  initialCancha,
-  initialVista,
+  initialFecha: serverFecha,
 }: BookingBoardProps) {
   const router = useRouter();
   const isMobile = useIsMobile();
+  const params = useSearchParams();
+  const initialDeporte = parseSportParam(params.get("deporte") ?? undefined);
+  const initialHora = params.get("hora") ?? undefined;
+  const initialVista = parseViewParam(params.get("vista") ?? undefined);
+  const selectedCourtId = params.get("cancha");
+  const [initialFecha, setOptimisticFecha] = useOptimistic(serverFecha);
+  const dateInputRef = useRef<HTMLInputElement>(null);
   const [isPending, startTransition] = useTransition();
-  const [selectedCourtId, setSelectedCourtId] = useState<string | null>(
-    initialCancha ?? null,
-  );
   const [selectedSlotStartsAt, setSelectedSlotStartsAt] = useState<
     string | null
   >(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const refresh = () => router.refresh();
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
+  }, [router]);
 
   const quickDays = useMemo(() => getNextSevenDays(), []);
 
@@ -116,7 +122,7 @@ export function BookingBoard({
   }, [courts, initialDeporte, slotsByCourt]);
 
   const hourLabels = useMemo(
-    () => collectHourLabels(slotsForHours),
+    () => collectHourLabels(Object.fromEntries(Object.entries(slotsForHours).map(([id, slots]) => [id, slots.filter((s) => s.available)]))),
     [slotsForHours],
   );
 
@@ -129,12 +135,12 @@ export function BookingBoard({
     () =>
       courts.map((court) => ({
         court,
-        summary: summarizeCourtAvailability(
-          slotsByCourt[court.id] ?? [],
-          selectedStartsAt,
-        ),
+        summary: {
+          ...summarizeCourtAvailability(slotsByCourt[court.id] ?? [], selectedStartsAt),
+          selectedSlotAvailable: initialHora ? (slotsByCourt[court.id] ?? []).some((s) => s.available && formatTimeLabel(s.startsAt) === initialHora) : null,
+        },
       })),
-    [courts, slotsByCourt, selectedStartsAt],
+    [courts, slotsByCourt, selectedStartsAt, initialHora],
   );
 
   const selectedCourt = courts.find((c) => c.id === selectedCourtId) ?? null;
@@ -150,7 +156,7 @@ export function BookingBoard({
   const activeSlot = useMemo(() => {
     if (selectedSlotStartsAt) {
       return (
-        courtSlots.find((s) => s.startsAt === selectedSlotStartsAt) ?? null
+        courtSlots.find((s) => s.available && s.startsAt === selectedSlotStartsAt) ?? null
       );
     }
     if (initialHora) {
@@ -175,8 +181,8 @@ export function BookingBoard({
       cancha?: string | undefined;
       vista?: BookingView;
     }) => {
+      if (isPending) return;
       if ("cancha" in patch) {
-        setSelectedCourtId(patch.cancha ?? null);
         setSelectedSlotStartsAt(null);
       }
       const query = buildBookingSearchParams({
@@ -187,11 +193,19 @@ export function BookingBoard({
           "cancha" in patch ? patch.cancha : (selectedCourtId ?? undefined),
         vista: patch.vista ?? initialVista,
       });
-      startTransition(() => {
-        router.replace(`/reservar?${query}`);
-      });
+      if (patch.fecha && patch.fecha !== serverFecha) {
+        startTransition(() => {
+          setOptimisticFecha(patch.fecha!);
+          router.replace(`/reservar?${query}`, { scroll: false });
+        });
+      } else {
+        window.history.replaceState(null, "", `/reservar?${query}`);
+      }
     },
     [
+      isPending,
+      serverFecha,
+      setOptimisticFecha,
       initialDeporte,
       initialFecha,
       initialHora,
@@ -202,19 +216,21 @@ export function BookingBoard({
   );
 
   const handleSelectCourt = (courtId: string) => {
-    setSelectedCourtId(courtId);
+    const candidate = planCourts.find((c) => c.court.id === courtId);
+    if (isPending || !candidate || candidate.summary.freeSlots === 0 ||
+        (initialHora && candidate.summary.selectedSlotAvailable !== true) ||
+        (initialDeporte && candidate.court.sport !== initialDeporte)) return;
     setSelectedSlotStartsAt(null);
     updateUrl({ cancha: courtId });
   };
 
   const handleClosePanel = () => {
-    setSelectedCourtId(null);
     setSelectedSlotStartsAt(null);
     updateUrl({ cancha: undefined });
   };
 
   const handleContinue = async () => {
-    if (!selectedCourt || !activeSlot) {
+    if (isPending || !selectedCourt || !activeSlot) {
       toast.error("Elegí un turno disponible para continuar");
       return;
     }
@@ -235,13 +251,15 @@ export function BookingBoard({
       toast.error(
         error instanceof Error ? error.message : "No se pudo reservar el turno",
       );
+      router.refresh();
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const panelContent = selectedCourt ? (
+  const panelContent = isPending ? <div role="status" className="flex h-full items-center justify-center gap-2 p-6 text-sm"><Loader2Icon className="size-4 animate-spin motion-reduce:animate-none" />Actualizando turnos…</div> : selectedCourt ? (
     <CourtDetailPanel
+      key={selectedCourt.id}
       court={selectedCourt}
       activeSlot={activeSlot}
       courtSlots={courtSlots}
@@ -249,7 +267,7 @@ export function BookingBoard({
       selectedHour={initialHora}
       onSelectSlot={setSelectedSlotStartsAt}
       onContinue={handleContinue}
-      isSubmitting={isSubmitting}
+      isSubmitting={isSubmitting || isPending}
       onClose={handleClosePanel}
       showClose={isMobile}
       scrollableSlots={!isMobile}
@@ -258,9 +276,9 @@ export function BookingBoard({
 
   return (
     <MotionProvider>
-      <FadeIn className="space-y-6">
+      <FadeIn className="space-y-3">
         {/* Step Indicator Header */}
-        <div className="rounded-3xl border border-white/10 bg-navy-950 p-4 sm:p-6 text-white shadow-xl">
+        <div className="rounded-3xl border border-white/10 bg-navy-950 p-4 text-white shadow-lg">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-lime-400">
@@ -311,24 +329,21 @@ export function BookingBoard({
           </div>
 
           {/* Quick Date Carousel */}
-          <div className="mt-6">
-            <div className="mb-2 flex items-center justify-between">
+          <div className="mt-3">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
                 1. Seleccionar Día:
               </span>
-              <div className="flex items-center gap-1.5 text-xs text-lime-400">
-                <CalendarDaysIcon className="size-3.5" />
-                <input
-                  type="date"
-                  value={initialFecha}
-                  min={toTodayInput()}
-                  onChange={(e) =>
-                    updateUrl({ fecha: e.target.value, cancha: undefined })
-                  }
-                  className="bg-transparent text-xs text-lime-400 underline cursor-pointer focus:outline-none"
-                  aria-label="Elegir otra fecha"
+              <label className="flex flex-wrap items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-xs text-lime-400 focus-within:ring-2 focus-within:ring-lime-400 cursor-pointer"
+                onClick={() => { if (!isPending) { try { dateInputRef.current?.showPicker?.(); } catch { dateInputRef.current?.focus(); } } }}>
+                <CalendarDaysIcon className="size-4" aria-hidden="true" />
+                <span>Otra fecha</span>
+                <input ref={dateInputRef} name="fecha" type="date" value={initialFecha}
+                  min={toTodayInput()} disabled={isPending}
+                  onChange={(e) => e.target.value && updateUrl({ fecha: e.target.value, hora: undefined, cancha: undefined })}
+                  className="min-w-0 bg-transparent text-xs text-white [color-scheme:dark] focus-visible:outline-2 focus-visible:outline-lime-400"
                 />
-              </div>
+              </label>
             </div>
 
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
@@ -337,12 +352,14 @@ export function BookingBoard({
                 return (
                   <button
                     key={day.isoDate}
+                    disabled={isPending}
+                    aria-pressed={isSelected}
                     type="button"
                     onClick={() =>
-                      updateUrl({ fecha: day.isoDate, cancha: undefined })
+                      updateUrl({ fecha: day.isoDate, hora: undefined, cancha: undefined })
                     }
                     className={cn(
-                      "flex min-w-[72px] flex-col items-center justify-center rounded-2xl border p-2.5 transition-all duration-200 active:scale-95",
+                      "flex min-w-[72px] flex-col items-center justify-center rounded-2xl border p-2.5 transition-[color,background-color,border-color,box-shadow,opacity,transform] duration-200 active:scale-95",
                       isSelected
                         ? "border-lime-400 bg-lime-400 text-navy-950 shadow-lg shadow-lime-400/20 font-bold"
                         : "border-white/10 bg-white/5 text-white hover:border-white/25 hover:bg-white/10",
@@ -366,7 +383,7 @@ export function BookingBoard({
           {/* Quick Sports Pills */}
           <div className="mt-4">
             <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-400">
-              2. Filtrar Deporte:
+              2. Deporte:
             </span>
             <div className="flex flex-wrap gap-2">
               <button
@@ -375,7 +392,7 @@ export function BookingBoard({
                   updateUrl({ deporte: undefined, cancha: undefined })
                 }
                 className={cn(
-                  "rounded-xl border px-3.5 py-2 text-xs font-semibold transition-all active:scale-95",
+                  "rounded-xl border px-3.5 py-2 text-xs font-semibold transition-[color,background-color,border-color,box-shadow,opacity,transform] active:scale-95",
                   !initialDeporte
                     ? "border-lime-400 bg-lime-400/20 text-lime-400 font-bold"
                     : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white",
@@ -394,7 +411,7 @@ export function BookingBoard({
                       updateUrl({ deporte: sport, cancha: undefined })
                     }
                     className={cn(
-                      "rounded-xl border px-3.5 py-2 text-xs font-semibold transition-all active:scale-95",
+                      "rounded-xl border px-3.5 py-2 text-xs font-semibold transition-[color,background-color,border-color,box-shadow,opacity,transform] active:scale-95",
                       isSelected
                         ? "border-lime-400 bg-lime-400/20 text-lime-400 font-bold"
                         : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white",
@@ -412,7 +429,7 @@ export function BookingBoard({
             <div className="mt-4">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  3. Horarios Disponibles:
+                  3. Horario de inicio:
                 </span>
                 {initialHora ? (
                   <button
@@ -441,7 +458,7 @@ export function BookingBoard({
                         })
                       }
                       className={cn(
-                        "rounded-xl border px-3 py-2 text-xs font-medium transition-all shrink-0 active:scale-95",
+                        "rounded-xl border px-3 py-2 text-xs font-medium transition-[color,background-color,border-color,box-shadow,opacity,transform] shrink-0 active:scale-95",
                         isSelected
                           ? "border-lime-400 bg-lime-400 text-navy-950 font-bold shadow-md shadow-lime-400/20"
                           : "border-white/10 bg-white/5 text-slate-300 hover:border-lime-400/50 hover:bg-white/10 hover:text-white",
@@ -464,21 +481,22 @@ export function BookingBoard({
 
         {/* Court Map / List Layout */}
         <div
-          className={cn(
-            "relative grid gap-6",
-            selectedCourt && !isMobile && "lg:grid-cols-[1fr_360px]",
-          )}
+          aria-busy={isPending}
+          className="relative grid items-stretch gap-3 md:h-[600px] md:grid-cols-[minmax(0,1fr)_350px]"
         >
-          <div className={cn("min-w-0", isPending && "opacity-60")}>
+          <div className="relative min-h-0 min-w-0">
+            {isPending && <div role="status" className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-background/75 backdrop-blur-sm"><span className="flex items-center gap-2 rounded-full bg-navy-950 px-4 py-3 text-sm text-white"><Loader2Icon className="size-4 animate-spin motion-reduce:animate-none" />Actualizando disponibilidad…</span></div>}
             {initialVista === "lista" ? (
               <PlanListView
                 courts={planCourts}
+                selectedHourLabel={initialHora}
                 selectedCourtId={selectedCourtId}
                 highlightSport={initialDeporte}
                 onSelectCourt={handleSelectCourt}
               />
             ) : (
               <PlanMap
+                className="md:h-full"
                 venue={venue}
                 courts={planCourts}
                 mode="select"
@@ -491,17 +509,15 @@ export function BookingBoard({
           </div>
 
           {/* Desktop Right Side Panel */}
-          {selectedCourt && !isMobile ? (
-            <aside className="flex max-h-[min(75vh,680px)] flex-col overflow-hidden rounded-3xl border border-white/10 bg-navy-950 text-white shadow-2xl">
-              {panelContent}
-            </aside>
-          ) : null}
+          <aside className="hidden h-[600px] min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-navy-950 text-white shadow-lg md:flex">
+            {panelContent ?? <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center"><MapIcon className="size-8 text-lime-400" aria-hidden="true" /><h2 className="text-xl">Elegí tu cancha</h2><p className="text-sm text-slate-300">Seleccioná una cancha disponible en el plano o en la lista para ver sus turnos.</p></div>}
+          </aside>
         </div>
 
         {/* Mobile Bottom Drawer for Selected Court */}
         {selectedCourt && isMobile ? (
           <Drawer open onOpenChange={(open) => !open && handleClosePanel()}>
-            <DrawerContent className="max-h-[85vh] bg-navy-950 text-white border-white/15">
+            <DrawerContent className="max-h-[85vh] h-[85dvh] bg-navy-950 text-white border-white/15">
               <DrawerHeader className="sr-only">
                 <DrawerTitle>{selectedCourt.name}</DrawerTitle>
               </DrawerHeader>
@@ -544,9 +560,9 @@ function CourtDetailPanel({
     : null;
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-navy-950 text-white">
+    <div className="booking-panel-enter flex min-h-0 flex-1 flex-col bg-navy-950 text-white">
       {/* Panel Header */}
-      <div className="shrink-0 space-y-2.5 border-b border-white/10 p-5">
+      <div className="shrink-0 space-y-2.5 border-b border-white/10 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
@@ -557,7 +573,7 @@ function CourtDetailPanel({
                 variant="outline"
                 className="border-white/20 text-slate-300 text-[10px]"
               >
-                Sintético Pro
+                {court.surface === "cesped_natural" ? "Césped natural" : court.surface === "cesped_sintetico" ? "Césped sintético" : "Cemento"}
               </Badge>
             </div>
             <h3 className="mt-1 font-display text-2xl uppercase tracking-wide text-white">
@@ -592,7 +608,7 @@ function CourtDetailPanel({
       </div>
 
       {/* Available Slots List */}
-      <div className="flex min-h-0 flex-1 flex-col p-5">
+      <div className="flex min-h-0 flex-1 flex-col p-4">
         <div className="mb-3 flex items-center justify-between">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-300">
             Turnos Disponibles ({availableSlots.length})
@@ -617,8 +633,8 @@ function CourtDetailPanel({
             className={cn(
               "flex flex-col gap-2.5",
               scrollableSlots &&
-                "min-h-0 flex-1 overflow-y-auto pr-1 no-scrollbar",
-              !scrollableSlots && "max-h-[45vh] overflow-y-auto no-scrollbar",
+                "min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 py-1 [scrollbar-width:thin] [color-scheme:dark]",
+              !scrollableSlots && "min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 py-1 [scrollbar-width:thin] [color-scheme:dark]",
             )}
           >
             {availableSlots.map((slot) => {
@@ -628,10 +644,11 @@ function CourtDetailPanel({
               return (
                 <button
                   key={slot.startsAt}
+                  aria-pressed={isActive}
                   type="button"
                   onClick={() => onSelectSlot(slot.startsAt)}
                   className={cn(
-                    "flex w-full items-center justify-between rounded-2xl border p-3.5 text-left text-sm transition-all duration-200 active:scale-[0.98]",
+                    "flex w-full items-center justify-between shrink-0 rounded-xl border p-3 text-left text-sm transition-[color,background-color,border-color,box-shadow,opacity,transform] duration-200 active:scale-[0.98]",
                     isActive
                       ? "border-lime-400 bg-lime-400/20 text-white ring-2 ring-lime-400 shadow-md shadow-lime-400/10"
                       : "border-white/10 bg-white/5 text-slate-200 hover:border-lime-400/40 hover:bg-white/10",
@@ -641,7 +658,7 @@ function CourtDetailPanel({
                     <div
                       className={cn(
                         "size-3 rounded-full",
-                        isActive ? "bg-lime-400 animate-pulse" : "bg-slate-500",
+                        isActive ? "bg-lime-400" : "bg-slate-500",
                       )}
                     />
                     <div>
@@ -671,7 +688,7 @@ function CourtDetailPanel({
       </div>
 
       {/* Footer Action */}
-      <div className="shrink-0 border-t border-white/10 p-5 bg-navy-950">
+      <div className="shrink-0 border-t border-white/10 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-navy-950">
         {activeSlot ? (
           <div className="mb-3 flex items-center justify-between text-xs">
             <span className="text-slate-300">Turno elegido:</span>
@@ -719,9 +736,5 @@ function courtSlotsPriceLabel(
 }
 
 function toTodayInput(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return venueDateKey(new Date());
 }
