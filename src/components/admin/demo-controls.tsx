@@ -24,7 +24,7 @@ export function DemoControls() {
     <div className="rounded-2xl border bg-muted/40 p-5">
       <h2 className="text-xl">Preparar la próxima visita</h2>
       <p className="my-3 max-w-xl text-sm text-muted-foreground">
-        Restablecé las 5 canchas, horarios, precios y reservas ficticias. Se
+        Restablecé las 8 canchas, horarios, precios y reservas ficticias. Se
         eliminan las reservas y comprobantes de las demostraciones anteriores.
       </p>
       <Dialog open={open} onOpenChange={setOpen}>

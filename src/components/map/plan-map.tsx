@@ -32,10 +32,10 @@ function statusFor(
   if (!summary) {
     return { label: "Cancha", tone: "neutral" };
   }
-  if (selectedHourLabel && summary.selectedSlotAvailable !== null) {
+  if (selectedHourLabel) {
     return summary.selectedSlotAvailable
       ? { label: "Disponible", tone: "available" }
-      : { label: "Ocupada", tone: "occupied" };
+      : { label: "No disponible", tone: "occupied" };
   }
   if (summary.totalSlots === 0) {
     return { label: "Sin turnos", tone: "neutral" };
@@ -87,7 +87,7 @@ export function PlanMap({
         const height = (court.planLengthM / venue.planLengthM) * 100;
 
         const commonClass = cn(
-          "absolute flex flex-col items-center justify-center gap-0.5 rounded-md border-2 p-1 text-center transition-all duration-300",
+          "disabled:cursor-not-allowed disabled:opacity-50 absolute flex flex-col items-center justify-center gap-0.5 rounded-md border-2 p-1 text-center transition-[background-color,border-color,opacity,box-shadow] duration-300",
           "focus-visible:ring-2 focus-visible:ring-lime-400 focus-visible:outline-none",
           status.tone === "available" &&
             "border-lime-400/80 bg-lime-400/35 text-white hover:bg-lime-400/50",
@@ -102,6 +102,8 @@ export function PlanMap({
           !isDimmed && "opacity-100",
           mode === "preview" && "pointer-events-none",
         );
+
+        const disabled = mode === "select" && (isDimmed || !summary || summary.freeSlots === 0 || (!!selectedHourLabel && summary.selectedSlotAvailable !== true));
 
         const label = `${court.name}, ${SPORT_LABELS[court.sport]}, ${status.label}${
           summary ? `, desde ${formatArs(court.basePriceArs)}` : ""
@@ -124,6 +126,7 @@ export function PlanMap({
               type="button"
               className={commonClass}
               style={style}
+              disabled={disabled}
               aria-label={label}
               aria-pressed={isSelected}
               onClick={() => onSelectCourt?.(court.id)}
@@ -158,14 +161,16 @@ export function PlanListView({
   onSelectCourt,
   selectedCourtId,
   highlightSport,
+  selectedHourLabel,
 }: {
   courts: PlanCourtState[];
   onSelectCourt?: (courtId: string) => void;
   selectedCourtId?: string | null;
   highlightSport?: Sport;
+  selectedHourLabel?: string;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border">
+    <div className="h-full overflow-auto overscroll-contain rounded-xl border bg-background [scrollbar-width:thin]">
       <table className="w-full text-left text-sm">
         <thead className="bg-muted">
           <tr>
@@ -177,9 +182,10 @@ export function PlanListView({
         </thead>
         <tbody>
           {courts.map(({ court, summary }) => {
-            const status = statusFor(summary, null);
+            const status = statusFor(summary, selectedHourLabel);
             const isDimmed =
               highlightSport !== undefined && court.sport !== highlightSport;
+            const disabled = isDimmed || !summary || summary.freeSlots === 0 || (!!selectedHourLabel && summary.selectedSlotAvailable !== true);
             return (
               <tr
                 key={court.id}
@@ -188,13 +194,15 @@ export function PlanListView({
                   selectedCourtId === court.id && "bg-accent",
                   isDimmed && selectedCourtId !== court.id && "opacity-40",
                 )}
-                onClick={() => onSelectCourt?.(court.id)}
+                onClick={() => !disabled && onSelectCourt?.(court.id)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
+                  if (!disabled && (e.key === "Enter" || e.key === " ")) {
+                    e.preventDefault();
                     onSelectCourt?.(court.id);
                   }
                 }}
-                tabIndex={0}
+                aria-disabled={disabled}
+                tabIndex={disabled ? -1 : 0}
                 role="button"
                 aria-label={`Seleccionar ${court.name}`}
               >

@@ -188,15 +188,7 @@ const allSeedCourts: Court[] = [
   },
 ];
 
-export const seedCourts = allSeedCourts.filter((c) =>
-  [
-    "court-f5-1",
-    "court-f5-2",
-    "court-f7-1",
-    "court-padel-1",
-    "court-padel-2",
-  ].includes(c.id),
-);
+export const seedCourts = allSeedCourts;
 
 export const seedPriceRules: PriceRule[] = [
   {

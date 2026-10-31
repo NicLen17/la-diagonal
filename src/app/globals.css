@@ -1073,3 +1073,12 @@ section[id] {
     transform: none !important;
   }
 }
+
+@keyframes booking-panel-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.booking-panel-enter { animation: booking-panel-enter 180ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .booking-panel-enter { animation: none; }
+}
