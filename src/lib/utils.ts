@@ -5,14 +5,17 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+import { venueDateKey, venueDateTime } from "./services/venue-time";
+
 export function toDateInputValue(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return venueDateKey(date);
 }
 
 export function parseDateInput(value: string): Date {
-  const [y, m, d] = value.split("-").map(Number);
-  return new Date(y, m - 1, d, 12, 0, 0, 0);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value))
+    throw new Error("Elegí una fecha válida");
+  const result = venueDateTime(value, "12:00");
+  if (!Number.isFinite(result.getTime()) || venueDateKey(result) !== value)
+    throw new Error("Elegí una fecha válida");
+  return result;
 }

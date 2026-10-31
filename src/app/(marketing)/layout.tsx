@@ -1,23 +1,17 @@
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
-import { MotionProvider } from "@/components/motion/motion-provider";
-import { getDataAccess } from "@/lib/data";
-
-export default async function MarketingLayout({
+export default function MarketingLayout({
   children,
-}: LayoutProps<"/">) {
-  const db = getDataAccess();
-  const venue = await db.venues.getDefaultVenue();
-
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <MotionProvider>
-      <SiteHeader />
-      <main className="flex-1">{children}</main>
-      <SiteFooter
-        instagramUrl={venue.instagramUrl}
-        facebookUrl={venue.facebookUrl}
-        whatsappUrl={venue.whatsappContactUrl}
-      />
-    </MotionProvider>
+    <>
+      <SiteHeader marketing />
+      <main id="contenido" className="flex-1">
+        {children}
+      </main>
+      <SiteFooter marketing />
+    </>
   );
 }

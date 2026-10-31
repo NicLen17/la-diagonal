@@ -1,5 +1,7 @@
 import type { Court, PriceRule } from "@/lib/data/types";
 
+import { venueDateKey, venueTime } from "./venue-time";
+
 function timeToMinutes(time: string): number {
   if (time === "00:00") return 24 * 60;
   const [h, m] = time.split(":").map(Number);
@@ -8,9 +10,10 @@ function timeToMinutes(time: string): number {
 
 function ruleApplies(rule: PriceRule, at: Date): boolean {
   if (!rule.isActive) return false;
-  const day = at.getDay();
+  const day = new Date(`${venueDateKey(at)}T12:00:00Z`).getUTCDay();
   if (!rule.daysOfWeek.includes(day)) return false;
-  const minutes = at.getHours() * 60 + at.getMinutes();
+  const [hour, minute] = venueTime(at).split(":").map(Number);
+  const minutes = hour * 60 + minute;
   const start = timeToMinutes(rule.startsAt);
   let end = timeToMinutes(rule.endsAt);
   if (end <= start) end += 24 * 60;
@@ -27,7 +30,8 @@ export function resolvePrice(
   const applicable = rules
     .filter(
       (r) =>
-        (r.courtId === null || r.courtId === court.id) && ruleApplies(r, startsAt),
+        (r.courtId === null || r.courtId === court.id) &&
+        ruleApplies(r, startsAt),
     )
     .sort((a, b) => b.priority - a.priority);
 

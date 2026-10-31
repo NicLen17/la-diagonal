@@ -54,9 +54,11 @@ function AdminSidebarNav() {
           className="flex flex-col gap-0.5 rounded-lg px-1 py-0.5 transition-opacity hover:opacity-90"
         >
           <span className="font-display text-sm tracking-wider text-sidebar-primary uppercase">
-            La Diagonal
+            Cancha Manager
           </span>
-          <span className="text-xs text-sidebar-foreground/60">Panel admin</span>
+          <span className="text-xs text-sidebar-foreground/60">
+            Panel admin
+          </span>
         </Link>
       </SidebarHeader>
       <SidebarContent className="px-2 py-3">
@@ -152,7 +154,7 @@ export function AdminLayoutShell({ children }: { children: React.ReactNode }) {
         <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-background px-4 md:px-6">
           <SidebarTrigger className="-ml-1" />
           <span className="text-sm font-medium text-muted-foreground">
-            Complejo Deportivo La Diagonal
+            Complejo Cancha Manager · Demo
           </span>
         </header>
         <div className="flex-1 p-4 md:p-6 lg:p-8">{children}</div>

@@ -1,10 +1,10 @@
-# La Diagonal — Domain Glossary
+# Cancha Manager — Domain Context
 
-Canonical terms for the Complejo Deportivo La Diagonal booking platform. No implementation details.
+For current product vocabulary, see [GLOSSARY.md](./GLOSSARY.md). The product is now Cancha Manager; La Diagonal is no longer a client or pilot. The booking terms below describe the existing core. SaaS transition decisions are tracked in [docs/cancha-manager-requirements.md](./docs/cancha-manager-requirements.md).
 
 ## Core entities
 
-- **Venue (Sede)**: A physical sports complex with its own dimensions, opening hours, and bank/payment details. The product is multi-venue ready; the UI currently surfaces one venue.
+- **Venue (Sede)**: A physical sports complex with its own dimensions, opening hours, and bank/payment details. A venue is distinct from the business buying Cancha Manager. The current demo surfaces one venue; multi-client isolation is not implemented.
 - **Court (Cancha)**: A playable surface inside a Venue. Has a sport, slot duration, base price, description, and a rectangle on the venue plan (position and size in meters).
 - **Sport (Deporte)**: The activity assigned to a Court (e.g. fútbol 5, fútbol 7, fútbol 9, fútbol 11, futsal, handball, pádel).
 - **Slot (Turno)**: A derived time interval for a Court on a given date. Never persisted. Produced from the Venue's hour template and the Court's slot duration.

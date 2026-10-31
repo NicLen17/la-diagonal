@@ -1,11 +1,13 @@
 import { getDataAccess } from "@/lib/data";
 import { ReservationsManager } from "@/components/admin/reservations-manager";
+import { STATUS_LABELS } from "@/lib/data/types";
 
 export default async function AdminReservasPage({
   searchParams,
 }: PageProps<"/admin/reservas">) {
   const params = await searchParams;
   const defaultTab = params.tab === "agenda" ? "agenda" : "tabla";
+  const defaultStatus = typeof params.status === "string" && params.status in STATUS_LABELS ? params.status : "all";
 
   const db = getDataAccess();
   const venue = await db.venues.getDefaultVenue();
@@ -26,6 +28,7 @@ export default async function AdminReservasPage({
         reservations={reservations}
         courts={courts}
         defaultTab={defaultTab}
+        defaultStatus={defaultStatus}
       />
     </div>
   );

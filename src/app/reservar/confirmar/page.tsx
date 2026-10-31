@@ -1,10 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  ChevronLeftIcon,
-  ClockIcon,
-  SparklesIcon,
-} from "lucide-react";
+import { ChevronLeftIcon, ClockIcon, SparklesIcon } from "lucide-react";
 import { ConfirmForm } from "@/components/booking/confirm-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ownsBooking } from "@/lib/services/auth";
 import { getDataAccess } from "@/lib/data";
 import { formatTimeLabel } from "@/lib/services/availability";
 import { SPORT_LABELS } from "@/lib/data/types";
@@ -29,8 +26,10 @@ export default async function ConfirmarPage({
   const params = await searchParams;
   const holdId = typeof params.hold === "string" ? params.hold : undefined;
 
-  if (!holdId) {
-    return <HoldError message="Falta el identificador de la reserva temporal." />;
+  if (!holdId || !(await ownsBooking(holdId))) {
+    return (
+      <HoldError message="Falta el identificador de la reserva temporal." />
+    );
   }
 
   const reservation = await getDataAccess().reservations.getById(holdId);
@@ -58,6 +57,7 @@ export default async function ConfirmarPage({
 
   const { venue, court } = reservation;
   const dateLabel = new Date(reservation.startsAt).toLocaleDateString("es-AR", {
+    timeZone: "America/Argentina/Tucuman",
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -89,7 +89,8 @@ export default async function ConfirmarPage({
                   Confirmá tu Turno
                 </h1>
                 <p className="mt-1 text-xs text-slate-300">
-                  Tu turno está bloqueado durante {venue.holdTtlMinutes} minutos para que puedas completar los datos.
+                  Tu turno está bloqueado durante {venue.holdTtlMinutes} minutos
+                  para que puedas completar los datos.
                 </p>
               </div>
 
@@ -101,11 +102,10 @@ export default async function ConfirmarPage({
                 <p className="font-display text-lg uppercase tracking-wide text-white">
                   {court.name}
                 </p>
-                <p className="text-xs text-slate-300 capitalize">
-                  {dateLabel}
-                </p>
+                <p className="text-xs text-slate-300 capitalize">{dateLabel}</p>
                 <p className="mt-1 text-sm font-bold text-lime-400">
-                  {formatTimeLabel(reservation.startsAt)} – {formatTimeLabel(reservation.endsAt)} hs
+                  {formatTimeLabel(reservation.startsAt)} –{" "}
+                  {formatTimeLabel(reservation.endsAt)} hs
                 </p>
               </div>
             </div>
@@ -143,10 +143,11 @@ function HoldError({ message }: { message: string }) {
           </CardDescription>
         </CardHeader>
         <CardContent className="mt-4">
-          <Button asChild className="w-full bg-lime-400 font-bold text-navy-950 hover:bg-lime-300 h-11">
-            <Link href="/reservar">
-              Volver a buscar canchas
-            </Link>
+          <Button
+            asChild
+            className="w-full bg-lime-400 font-bold text-navy-950 hover:bg-lime-300 h-11"
+          >
+            <Link href="/reservar">Volver a buscar canchas</Link>
           </Button>
         </CardContent>
       </Card>

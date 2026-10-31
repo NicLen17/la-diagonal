@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { LookupForm } from "@/components/booking/lookup-form";
-import { DiagonalSection, SectionHeading } from "@/components/layout/diagonal-section";
+import {
+  DiagonalSection,
+  SectionHeading,
+} from "@/components/layout/diagonal-section";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { getDataAccess } from "@/lib/data";
@@ -39,3 +42,4 @@ export default async function MisReservasPage() {
     </>
   );
 }
+export const dynamic = "force-dynamic";

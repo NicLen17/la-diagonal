@@ -1,5 +1,6 @@
 import { getDataAccess } from "@/lib/data";
 import { VenueConfigForm } from "@/components/admin/venue-config-form";
+import { DemoControls } from "@/components/admin/demo-controls";
 
 export default async function AdminConfiguracionPage() {
   const db = getDataAccess();
@@ -14,6 +15,7 @@ export default async function AdminConfiguracionPage() {
         </p>
       </div>
       <VenueConfigForm venue={venue} />
+      <DemoControls />
     </div>
   );
 }

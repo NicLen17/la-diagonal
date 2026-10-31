@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { isAdmin, ownsCode } from "@/lib/services/auth";
 import { notFound } from "next/navigation";
-import {
-  CheckCircle2Icon,
-  MessageCircleIcon,
-} from "lucide-react";
+import { CheckCircle2Icon, MessageCircleIcon } from "lucide-react";
 import { ReservationCodeBlock } from "@/components/booking/reservation-code-block";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
@@ -12,11 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CopyField } from "@/components/ui/copy-button";
 import { getDataAccess } from "@/lib/data";
-import {
-  PAYMENT_LABELS,
-  SPORT_LABELS,
-  STATUS_LABELS,
-} from "@/lib/data/types";
+import { PAYMENT_LABELS, SPORT_LABELS, STATUS_LABELS } from "@/lib/data/types";
 import { formatTimeLabel } from "@/lib/services/availability";
 import { formatArs } from "@/lib/services/pricing";
 import {
@@ -29,7 +23,8 @@ export async function generateMetadata({
 }: PageProps<"/reserva/[code]">): Promise<Metadata> {
   const { code } = await params;
   return {
-    title: `Voucher de Reserva ${code} | La Diagonal`,
+    title: `Reserva ${code}`,
+    robots: { index: false, follow: false },
   };
 }
 
@@ -37,6 +32,7 @@ export default async function ReservaDetailPage({
   params,
 }: PageProps<"/reserva/[code]">) {
   const { code } = await params;
+  if (!(await ownsCode(code)) && !(await isAdmin())) notFound();
 
   const db = getDataAccess();
   const [reservation, venue] = await Promise.all([
@@ -47,6 +43,7 @@ export default async function ReservaDetailPage({
   if (!reservation) notFound();
 
   const dateLabel = new Date(reservation.startsAt).toLocaleDateString("es-AR", {
+    timeZone: "America/Argentina/Tucuman",
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -89,10 +86,10 @@ export default async function ReservaDetailPage({
               </Badge>
 
               <h1 className="mt-3 font-display text-3xl uppercase tracking-wide text-white sm:text-4xl">
-                ¡Turno Registrado!
+                {isConfirmed ? "Reserva confirmada" : reservation.status === "pending" ? "Reserva registrada" : STATUS_LABELS[reservation.status]}
               </h1>
               <p className="mt-1 text-xs text-slate-300">
-                Presentá este voucher digital o tu código al llegar al complejo.
+                {isConfirmed ? "La administración confirmó tu turno." : reservation.status === "pending" ? "La administración debe revisar y confirmar tu reserva." : "Este turno ya no está reservado. Podés elegir un nuevo horario."} Demo: no realices pagos reales.
               </p>
             </div>
 
@@ -104,46 +101,62 @@ export default async function ReservaDetailPage({
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5 space-y-3 text-xs sm:text-sm">
                 <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
                   <span className="text-slate-400">Cancha:</span>
-                  <span className="font-bold text-white uppercase">{reservation.court.name}</span>
+                  <span className="font-bold text-white uppercase">
+                    {reservation.court.name}
+                  </span>
                 </div>
 
                 <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
                   <span className="text-slate-400">Deporte:</span>
-                  <span className="font-semibold text-lime-400">{SPORT_LABELS[reservation.court.sport]}</span>
+                  <span className="font-semibold text-lime-400">
+                    {SPORT_LABELS[reservation.court.sport]}
+                  </span>
                 </div>
 
                 <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
                   <span className="text-slate-400">Fecha:</span>
-                  <span className="font-semibold text-white capitalize">{dateLabel}</span>
+                  <span className="font-semibold text-white capitalize">
+                    {dateLabel}
+                  </span>
                 </div>
 
                 <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
                   <span className="text-slate-400">Horario:</span>
                   <span className="font-bold text-white">
-                    {formatTimeLabel(reservation.startsAt)} – {formatTimeLabel(reservation.endsAt)} hs
+                    {formatTimeLabel(reservation.startsAt)} –{" "}
+                    {formatTimeLabel(reservation.endsAt)} hs
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
                   <span className="text-slate-400">Total Turno:</span>
-                  <span className="font-bold text-white">{formatArs(reservation.priceArs)}</span>
+                  <span className="font-bold text-white">
+                    {formatArs(reservation.priceArs)}
+                  </span>
                 </div>
 
                 <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
                   <span className="text-slate-400">Modalidad de Pago:</span>
-                  <span className="font-semibold text-slate-200">{PAYMENT_LABELS[reservation.paymentMethod]}</span>
+                  <span className="font-semibold text-slate-200">
+                    {PAYMENT_LABELS[reservation.paymentMethod]}
+                  </span>
                 </div>
 
                 {reservation.depositArs > 0 ? (
                   <div className="flex items-center justify-between border-b border-white/10 pb-2.5 text-lime-400">
-                    <span>Seña Abonada:</span>
-                    <span className="font-bold">{formatArs(reservation.depositArs)}</span>
+                    <span>Importe declarado:</span>
+                    <span className="font-bold">
+                      {formatArs(reservation.depositArs)}
+                    </span>
                   </div>
                 ) : null}
 
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-slate-400">Titular de la Reserva:</span>
-                  <span className="font-semibold text-white">{reservation.customer.fullName} ({reservation.customer.phoneE164})</span>
+                  <span className="font-semibold text-white">
+                    {reservation.customer.fullName} (
+                    {reservation.customer.phoneE164})
+                  </span>
                 </div>
               </div>
 
@@ -165,30 +178,45 @@ export default async function ReservaDetailPage({
               <div className="rounded-2xl border border-lime-400/40 bg-lime-400/10 p-5 text-center space-y-3">
                 <div className="flex items-center justify-center gap-2 text-lime-400 font-bold text-sm">
                   <MessageCircleIcon className="size-5" />
-                  <span>Enviá tu comprobante por WhatsApp</span>
+                  <span>Compartí tu reserva por WhatsApp</span>
                 </div>
                 <p className="text-xs text-slate-300">
-                  Tocá el botón abajo para abrir WhatsApp con los datos ya cargados y confirmar con la administración.
+                  Tocá el botón abajo para abrir WhatsApp con los datos ya
+                  cargados y enviarlos a la administración. Tu reserva ya está
+                  registrada. El comprobante no se adjunta automáticamente.
                 </p>
-                <Button asChild size="lg" className="w-full bg-lime-400 font-bold text-navy-950 hover:bg-lime-300 h-12 shadow-lg shadow-lime-400/20">
-                  <a href={whatsappUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2">
+                <Button
+                  asChild
+                  size="lg"
+                  className="w-full bg-lime-400 font-bold text-navy-950 hover:bg-lime-300 h-12 shadow-lg shadow-lime-400/20"
+                >
+                  <a
+                    href={whatsappUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-center gap-2"
+                  >
                     <MessageCircleIcon className="size-5" />
-                    <span>Notificar por WhatsApp</span>
+                    <span>Abrir resumen en WhatsApp</span>
                   </a>
                 </Button>
               </div>
 
               {/* Secondary Navigation Buttons */}
               <div className="grid gap-2.5 sm:grid-cols-2 pt-2">
-                <Button asChild variant="outline" className="border-white/15 bg-white/5 text-white hover:bg-white/10 h-11 text-xs font-semibold">
-                  <Link href="/reservar">
-                    Reservar otra cancha
-                  </Link>
+                <Button
+                  asChild
+                  variant="outline"
+                  className="border-white/15 bg-white/5 text-white hover:bg-white/10 h-11 text-xs font-semibold"
+                >
+                  <Link href="/reservar">Reservar otra cancha</Link>
                 </Button>
-                <Button asChild variant="outline" className="border-white/15 bg-white/5 text-white hover:bg-white/10 h-11 text-xs font-semibold">
-                  <Link href="/mis-reservas">
-                    Ver mis reservas
-                  </Link>
+                <Button
+                  asChild
+                  variant="outline"
+                  className="border-white/15 bg-white/5 text-white hover:bg-white/10 h-11 text-xs font-semibold"
+                >
+                  <Link href="/mis-reservas">Ver mis reservas</Link>
                 </Button>
               </div>
             </div>

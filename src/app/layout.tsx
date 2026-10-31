@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Anton, Inter, Geist_Mono } from "next/font/google";
+import { Anton, DM_Sans, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
@@ -11,9 +11,9 @@ const anton = Anton({
   display: "swap",
 });
 
-const inter = Inter({
+const inter = DM_Sans({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-dm-sans",
   display: "swap",
 });
 
@@ -25,19 +25,20 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "La Diagonal | Complejo Deportivo",
-    template: "%s | La Diagonal",
+    default: "Cancha Manager | Más cancha. Menos vueltas.",
+    template: "%s | Cancha Manager",
   },
   description:
-    "Complejo deportivo en Tafí Viejo, Tucumán. Alquiler de canchas de fútbol 5, 7, 9, 11, futsal, handball y pádel. Reservá online.",
-  metadataBase: new URL("https://ladiagonal.com.ar"),
+    "Tu landing personalizada, reservas online y administración para complejos deportivos.",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ??
+      (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000"),
+  ),
   openGraph: {
-    title: "La Diagonal | Complejo Deportivo",
-    description:
-      "Reservá canchas de fútbol, handball y pádel en Tafí Viejo. Desde 2017 impulsando el deporte recreativo y competitivo.",
+    title: "Cancha Manager",
+    description: "Tu web, tus reservas y tu operación. En el mismo equipo.",
     locale: "es_AR",
     type: "website",
-    images: ["/images/Diagonal img 1.png"],
   },
 };
 
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
+      data-scroll-behavior="smooth"
       className={`${anton.variable} ${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col font-sans">

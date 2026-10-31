@@ -9,19 +9,12 @@ export type Sport =
   | "padel";
 
 export type ReservationStatus =
-  | "hold"
-  | "pending"
-  | "confirmed"
-  | "cancelled"
-  | "expired";
+  "hold" | "pending" | "confirmed" | "cancelled" | "expired";
 
 export type PaymentMethod = "cash" | "deposit" | "transfer_full";
 
 export type Surface =
-  | "cesped_sintetico"
-  | "cesped_natural"
-  | "cemento"
-  | "parquet";
+  "cesped_sintetico" | "cesped_natural" | "cemento" | "parquet";
 
 export type Venue = {
   id: string;
@@ -127,6 +120,7 @@ export type Reservation = {
   priceArs: number;
   depositArs: number;
   receiptFileName: string | null;
+  receiptPath?: string | null;
   notes: string | null;
   createdAt: string;
   updatedAt: string;

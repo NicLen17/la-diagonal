@@ -12,7 +12,13 @@ import {
 } from "@/lib/data/schemas";
 import type { Court } from "@/lib/data/types";
 
-const COOKIE = "ld_admin";
+import { requireAdmin } from "./auth";
+import {
+  ADMIN_COOKIE,
+  adminPasscode,
+  matchesSecret,
+  createAdminSession,
+} from "./session";
 
 const ADMIN_PATHS = [
   "/admin",
@@ -29,33 +35,37 @@ function revalidateAdmin() {
     revalidatePath(path);
   }
   revalidatePath("/reservar");
+  revalidatePath("/demo");
 }
 
 export async function adminLogin(
-  passcode: string,
+  form: FormData,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const expected = process.env.ADMIN_PASSCODE ?? "diagonal2026";
-  if (passcode !== expected) {
+  const passcode = String(form.get("passcode") ?? "");
+  const expected = adminPasscode();
+  if (!matchesSecret(passcode, expected)) {
     return { ok: false, error: "Clave de acceso incorrecta" };
   }
   const cookieStore = await cookies();
-  cookieStore.set(COOKIE, passcode, {
+  cookieStore.set(ADMIN_COOKIE, createAdminSession(), {
+    secure: process.env.NODE_ENV === "production",
     httpOnly: true,
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: 60 * 60 * 12,
   });
   return { ok: true };
 }
 
 export async function adminLogout() {
   const cookieStore = await cookies();
-  cookieStore.delete(COOKIE);
+  cookieStore.delete(ADMIN_COOKIE);
   revalidateAdmin();
 }
 
 export async function upsertCourt(raw: unknown) {
   const input = courtInputSchema.parse(raw);
+  await requireAdmin();
   const db = getDataAccess();
   const venue = await db.venues.getDefaultVenue();
   const court = await db.courts.upsert(venue.id, input);
@@ -65,6 +75,7 @@ export async function upsertCourt(raw: unknown) {
 
 export async function deleteCourt(id: string) {
   if (!id) throw new Error("ID requerido");
+  await requireAdmin();
   const db = getDataAccess();
   await db.courts.remove(id);
   revalidateAdmin();
@@ -77,6 +88,7 @@ export async function updateCourtPlan(
     "planX_m" | "planY_m" | "planWidthM" | "planLengthM" | "planRotationDeg"
   >,
 ) {
+  await requireAdmin();
   const db = getDataAccess();
   const court = await db.courts.updatePlan(id, plan);
   revalidateAdmin();
@@ -85,6 +97,7 @@ export async function updateCourtPlan(
 
 export async function upsertPriceRule(raw: unknown) {
   const input = priceRuleInputSchema.parse(raw);
+  await requireAdmin();
   const db = getDataAccess();
   const venue = await db.venues.getDefaultVenue();
   const rule = await db.priceRules.upsert(venue.id, input);
@@ -94,6 +107,7 @@ export async function upsertPriceRule(raw: unknown) {
 
 export async function deletePriceRule(id: string) {
   if (!id) throw new Error("ID requerido");
+  await requireAdmin();
   const db = getDataAccess();
   await db.priceRules.remove(id);
   revalidateAdmin();
@@ -101,6 +115,7 @@ export async function deletePriceRule(id: string) {
 
 export async function upsertVenueHours(raw: unknown) {
   const input = venueHoursInputSchema.parse(raw);
+  await requireAdmin();
   const db = getDataAccess();
   const venue = await db.venues.getDefaultVenue();
   const existing = await db.venues.listVenueHours(venue.id);
@@ -122,6 +137,7 @@ export async function upsertVenueHours(raw: unknown) {
 
 export async function upsertClosure(raw: unknown) {
   const input = closureInputSchema.parse(raw);
+  await requireAdmin();
   const db = getDataAccess();
   const venue = await db.venues.getDefaultVenue();
   const closure = await db.closures.upsert(venue.id, input);
@@ -131,6 +147,7 @@ export async function upsertClosure(raw: unknown) {
 
 export async function deleteClosure(id: string) {
   if (!id) throw new Error("ID requerido");
+  await requireAdmin();
   const db = getDataAccess();
   await db.closures.remove(id);
   revalidateAdmin();
@@ -138,6 +155,7 @@ export async function deleteClosure(id: string) {
 
 export async function updateVenueConfig(raw: unknown) {
   const input = venueConfigSchema.parse(raw);
+  await requireAdmin();
   const db = getDataAccess();
   const venue = await db.venues.updateVenueConfig(input);
   revalidateAdmin();

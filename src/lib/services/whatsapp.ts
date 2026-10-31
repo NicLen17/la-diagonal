@@ -1,5 +1,5 @@
 import type { ReservationWithDetails } from "@/lib/data/types";
-import { PAYMENT_LABELS, SPORT_LABELS } from "@/lib/data/types";
+import { PAYMENT_LABELS, SPORT_LABELS, STATUS_LABELS } from "@/lib/data/types";
 import { formatArs } from "./pricing";
 
 export function buildReservationMessage(
@@ -7,6 +7,7 @@ export function buildReservationMessage(
 ): string {
   const date = new Date(reservation.startsAt).toLocaleDateString("es-AR", {
     weekday: "long",
+    timeZone: reservation.venue.timezone,
     day: "2-digit",
     month: "long",
   });
@@ -14,17 +15,20 @@ export function buildReservationMessage(
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
+    timeZone: reservation.venue.timezone,
   });
   const end = new Date(reservation.endsAt).toLocaleTimeString("es-AR", {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
+    timeZone: reservation.venue.timezone,
   });
 
   const lines = [
-    `⚽ *Nueva reserva — La Diagonal*`,
+    `*Nueva reserva — ${reservation.venue.name}*`,
     ``,
     `*Código:* ${reservation.code}`,
+    `*Estado:* ${STATUS_LABELS[reservation.status]}`,
     `*Cancha:* ${reservation.court.name}`,
     `*Deporte:* ${SPORT_LABELS[reservation.court.sport]}`,
     `*Fecha:* ${date}`,
@@ -34,7 +38,9 @@ export function buildReservationMessage(
   ];
 
   if (reservation.depositArs > 0) {
-    lines.push(`*Seña:* ${formatArs(reservation.depositArs)}`);
+    lines.push(
+      `*Importe declarado a verificar:* ${formatArs(reservation.depositArs)}`,
+    );
   }
 
   lines.push(
@@ -52,14 +58,15 @@ export function buildReservationMessage(
     lines.push(``, `📎 Comprobante: ${reservation.receiptFileName}`);
   }
 
-  lines.push(``, `_Enviado desde la web de La Diagonal_`);
+  lines.push(
+    ``,
+    `_Estado de la reserva: ${STATUS_LABELS[reservation.status]}. La validación de pagos es manual._`,
+    `_Enviado desde Cancha Manager · Demo_`,
+  );
   return lines.join("\n");
 }
 
-export function buildWhatsAppUrl(
-  phoneE164: string,
-  message: string,
-): string {
+export function buildWhatsAppUrl(phoneE164: string, message: string): string {
   const digits = phoneE164.replace(/\D/g, "");
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }

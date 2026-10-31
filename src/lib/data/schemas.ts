@@ -11,11 +11,7 @@ export const sportSchema = z.enum([
   "padel",
 ]);
 
-export const paymentMethodSchema = z.enum([
-  "cash",
-  "deposit",
-  "transfer_full",
-]);
+export const paymentMethodSchema = z.enum(["cash", "deposit", "transfer_full"]);
 
 export const surfaceSchema = z.enum([
   "cesped_sintetico",
@@ -25,10 +21,11 @@ export const surfaceSchema = z.enum([
 ]);
 
 export const customerInputSchema = z.object({
-  fullName: z.string().min(2, "Ingresá tu nombre completo"),
+  fullName: z.string().trim().min(2, "Ingresá tu nombre completo").max(120, "Usá hasta 120 caracteres"),
   email: z
     .string()
     .trim()
+    .max(254, "Email demasiado largo")
     .refine(
       (value) => value === "" || z.email().safeParse(value).success,
       "Email inválido",
@@ -36,6 +33,7 @@ export const customerInputSchema = z.object({
   phone: z
     .string()
     .min(8, "Teléfono inválido")
+    .max(30, "Teléfono inválido")
     .regex(/^[\d\s+\-()]+$/, "Teléfono inválido"),
 });
 
@@ -49,6 +47,7 @@ export const completeReservationSchema = customerInputSchema.extend({
   reservationId: z.string().min(1),
   paymentMethod: paymentMethodSchema,
   receiptFileName: z.string().optional(),
+  receiptPath: z.string().optional(),
   notes: z.string().max(500).optional(),
 });
 
@@ -114,7 +113,9 @@ export const venueConfigSchema = z.object({
 
 export type CustomerInput = z.infer<typeof customerInputSchema>;
 export type CreateHoldInput = z.infer<typeof createHoldSchema>;
-export type CompleteReservationInput = z.infer<typeof completeReservationSchema>;
+export type CompleteReservationInput = z.infer<
+  typeof completeReservationSchema
+>;
 export type CourtInput = z.infer<typeof courtInputSchema>;
 export type PriceRuleInput = z.infer<typeof priceRuleInputSchema>;
 export type VenueConfigInput = z.infer<typeof venueConfigSchema>;
