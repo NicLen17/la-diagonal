@@ -154,10 +154,13 @@ export async function deleteClosure(id: string) {
 }
 
 export async function updateVenueConfig(raw: unknown) {
-  const input = venueConfigSchema.parse(raw);
+  const input = venueConfigSchema.partial().parse(raw);
   await requireAdmin();
   const db = getDataAccess();
-  const venue = await db.venues.updateVenueConfig(input);
+  const current = await db.venues.getDefaultVenue();
+  const venue = await db.venues.updateVenueConfig(
+    venueConfigSchema.parse({ ...current, ...input }),
+  );
   revalidateAdmin();
   return venue;
 }

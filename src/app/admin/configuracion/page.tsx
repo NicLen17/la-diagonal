@@ -1,3 +1,4 @@
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { getDataAccess } from "@/lib/data";
 import { VenueConfigForm } from "@/components/admin/venue-config-form";
 import { DemoControls } from "@/components/admin/demo-controls";
@@ -7,15 +8,15 @@ export default async function AdminConfiguracionPage() {
   const venue = await db.venues.getDefaultVenue();
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl uppercase">Configuración</h1>
-        <p className="text-sm text-muted-foreground">
-          Datos bancarios, contacto y parámetros del complejo
-        </p>
+    <div className="admin-page">
+      <AdminPageHeader
+        title="Configuración"
+        description="Datos de cobro, contacto y preferencias del complejo."
+      />
+      <div className="mx-auto w-full max-w-4xl space-y-6">
+        <VenueConfigForm venue={venue} />
+        <DemoControls />
       </div>
-      <VenueConfigForm venue={venue} />
-      <DemoControls />
     </div>
   );
 }

@@ -2,8 +2,8 @@
 
 import { useOptimistic, useTransition } from "react";
 import { toast } from "sonner";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import Link from "next/link";
+import { VENUE_TIMEZONE } from "@/lib/services/venue-time";
 import type { ReservationWithDetails } from "@/lib/data/types";
 import { STATUS_LABELS } from "@/lib/data/types";
 import { updateReservationStatusAction } from "@/lib/services/reservations";
@@ -22,12 +22,14 @@ type ReservationStatusActionsProps = {
   reservation: ReservationWithDetails;
   compact?: boolean;
   onUpdated?: () => void;
+  onOptimisticStatus?: (status: "confirmed" | "cancelled" | "pending") => void;
 };
 
 export function ReservationStatusActions({
   reservation,
   compact = false,
   onUpdated,
+  onOptimisticStatus,
 }: ReservationStatusActionsProps) {
   const [optimisticStatus, setOptimisticStatus] = useOptimistic(
     reservation.status,
@@ -43,6 +45,7 @@ export function ReservationStatusActions({
       return;
     startTransition(async () => {
       setOptimisticStatus(status);
+      onOptimisticStatus?.(status);
       try {
         await updateReservationStatusAction(reservation.id, status);
         toast.success(
@@ -111,49 +114,71 @@ export function PendingReservationsList({
 }: {
   reservations: ReservationWithDetails[];
 }) {
-  if (reservations.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Pendientes recientes</CardTitle>
-          <CardDescription>
-            No hay reservas pendientes de confirmación
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    );
-  }
-
+  const [visible, removeOptimistic] = useOptimistic(
+    reservations,
+    (current, id: string) => current.filter((r) => r.id !== id),
+  );
   return (
-    <Card>
+    <Card
+      className={
+        visible.length ? "border-amber-300 dark:border-amber-700" : undefined
+      }
+    >
       <CardHeader>
-        <CardTitle>Pendientes recientes</CardTitle>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle>
+            {visible.length
+              ? "Pendientes de confirmación"
+              : "Confirmaciones al día"}
+          </CardTitle>
+          <Button asChild size="sm" variant="outline">
+            <Link href="/admin/reservas?status=pending">Ver todas</Link>
+          </Button>
+        </div>
         <CardDescription>
-          Confirmá o cancelá reservas en espera de aprobación
+          {visible.length
+            ? "Revisá primero las que llevan más tiempo esperando."
+            : "No hay reservas pendientes de revisión."}
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {reservations.map((reservation) => (
-          <div
-            key={reservation.id}
-            className="flex flex-col gap-3 rounded-lg border bg-card p-3 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="space-y-1">
-              <p className="font-medium">
-                {reservation.court.name} · {reservation.code}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {format(new Date(reservation.startsAt), "EEE d MMM · HH:mm", {
-                  locale: es,
-                })}{" "}
-                · {reservation.customer.fullName} ·{" "}
-                {formatArs(reservation.priceArs)}
-              </p>
+      {visible.length ? (
+        <CardContent className="space-y-3">
+          {visible.map((reservation) => (
+            <div
+              key={reservation.id}
+              className="space-y-3 rounded-xl border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-800 dark:bg-amber-950/30"
+            >
+              <div>
+                <p className="break-words font-semibold">
+                  {reservation.court.name} · {reservation.code}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {new Intl.DateTimeFormat("es-AR", {
+                    timeZone: VENUE_TIMEZONE,
+                    weekday: "short",
+                    day: "numeric",
+                    month: "short",
+                    hour12: false,
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }).format(new Date(reservation.startsAt))}{" "}
+                  · {formatArs(reservation.priceArs)}
+                </p>
+                <p className="mt-1 break-words text-sm">
+                  {reservation.customer.fullName}
+                </p>
+              </div>
+              <ReservationStatusActions
+                reservation={reservation}
+                compact
+                onOptimisticStatus={(status) => {
+                  if (status !== "pending") removeOptimistic(reservation.id);
+                }}
+              />
             </div>
-            <ReservationStatusActions reservation={reservation} compact />
-          </div>
-        ))}
-      </CardContent>
+          ))}
+        </CardContent>
+      ) : null}
     </Card>
   );
 }

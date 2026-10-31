@@ -1,4 +1,14 @@
-import type { ReactNode } from "react";
+import {
+  Children,
+  cloneElement,
+  isValidElement,
+  useId,
+  type ReactNode,
+  type ReactElement,
+} from "react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { SelectTrigger } from "@/components/ui/select";
 import { XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,12 +49,12 @@ export function AdminFormSheet({
       <SheetContent
         showCloseButton={false}
         className={cn(
-          "gap-0 overflow-hidden border-l border-border bg-background p-0 shadow-2xl sm:max-w-md",
+          "admin-content gap-0 overflow-hidden border-l border-border bg-background p-0 shadow-2xl data-[side=right]:w-full sm:data-[side=right]:max-w-lg",
           className,
         )}
       >
         <SheetHeader className="relative shrink-0 space-y-1.5 border-b border-border bg-muted/20 px-6 py-5 pr-14 text-left">
-          <SheetTitle className="font-display text-xl tracking-wide text-navy-900 uppercase">
+          <SheetTitle className="font-display text-xl tracking-wide text-foreground">
             {title}
           </SheetTitle>
           {description ? (
@@ -65,7 +75,7 @@ export function AdminFormSheet({
           </SheetClose>
         </SheetHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-5">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-6 py-5">
           <div className="space-y-5">{children}</div>
         </div>
 
@@ -88,10 +98,55 @@ export function AdminField({
   children: ReactNode;
   className?: string;
 }) {
+  const id = useId();
+  const { control, labelled } = labelControls(children, id, label);
   return (
-    <div className={cn("space-y-2", className)}>
-      <label className="text-sm font-medium text-foreground">{label}</label>
-      {children}
+    <div
+      className={cn("space-y-2", className)}
+      role={!labelled ? "group" : undefined}
+      aria-label={!labelled ? label : undefined}
+    >
+      <label
+        htmlFor={labelled ? id : undefined}
+        className="text-sm font-medium text-foreground"
+      >
+        {label}
+      </label>
+      {control}
     </div>
   );
+}
+
+function labelControls(
+  nodes: ReactNode,
+  id: string,
+  label: string,
+): { control: ReactNode; labelled: boolean } {
+  let labelled = false;
+  const output: ReactNode[] = [];
+  for (const child of Children.toArray(nodes)) {
+    if (!isValidElement(child)) {
+      output.push(child);
+      continue;
+    }
+    const element = child as ReactElement<{
+      children?: ReactNode;
+      id?: string;
+      "aria-label"?: string;
+    }>;
+    if (
+      element.type === Input ||
+      element.type === Textarea ||
+      element.type === SelectTrigger ||
+      ["input", "select", "textarea"].includes(element.type as string)
+    ) {
+      labelled = true;
+      output.push(cloneElement(element, { id, "aria-label": label }));
+    } else if (element.props.children) {
+      const nested = labelControls(element.props.children, id, label);
+      labelled = labelled || nested.labelled;
+      output.push(cloneElement(element, {}, nested.control));
+    } else output.push(element);
+  }
+  return { control: output, labelled };
 }

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import type { Closure, Court, VenueHours } from "@/lib/data/types";
+import { venueDateTime, VENUE_TIMEZONE } from "@/lib/services/venue-time";
 import { DAY_LABELS } from "@/lib/services/admin-stats";
 import {
   deleteClosure,
@@ -61,8 +62,8 @@ export function HoursEditor({ hours }: { hours: VenueHours[] }) {
           Apertura y cierre del complejo por día (00:00 = medianoche)
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {[0, 1, 2, 3, 4, 5, 6].map((day) => {
+      <CardContent className="space-y-2">
+        {[1, 2, 3, 4, 5, 6, 0].map((day) => {
           const row = hours.find((h) => h.dayOfWeek === day) ?? {
             opensAt: "09:00",
             closesAt: "00:00",
@@ -100,19 +101,25 @@ function DayHoursRow({
   const [closesAt, setClosesAt] = useState(initialCloses);
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-end">
-      <div className="min-w-[100px] font-medium">{DAY_LABELS[day]}</div>
-      <div className="space-y-1">
-        <Label className="text-xs">Abre</Label>
+    <div className="grid grid-cols-2 items-end gap-2 rounded-lg border bg-muted/20 p-3 sm:grid-cols-[minmax(80px,1fr)_minmax(0,110px)_minmax(0,110px)_auto]">
+      <div className="self-center font-medium">{DAY_LABELS[day]}</div>
+      <div className="order-2 space-y-1 sm:order-none">
+        <Label htmlFor={`opens-${day}`} className="text-xs">
+          Abre
+        </Label>
         <Input
+          id={`opens-${day}`}
           type="time"
           value={opensAt}
           onChange={(e) => setOpensAt(e.target.value)}
         />
       </div>
-      <div className="space-y-1">
-        <Label className="text-xs">Cierra</Label>
+      <div className="order-3 space-y-1 sm:order-none">
+        <Label htmlFor={`closes-${day}`} className="text-xs">
+          Cierra
+        </Label>
         <Input
+          id={`closes-${day}`}
           type="time"
           value={closesAt === "00:00" ? "00:00" : closesAt}
           onChange={(e) => setClosesAt(e.target.value)}
@@ -120,6 +127,8 @@ function DayHoursRow({
       </div>
       <Button
         size="sm"
+        className="order-1 justify-self-end sm:order-none"
+        aria-label={`Guardar horario de ${DAY_LABELS[day]}`}
         disabled={pending}
         onClick={() => onSave(day, opensAt, closesAt)}
       >
@@ -145,13 +154,30 @@ export function ClosuresManager({
   });
 
   function createClosure() {
+    if (
+      form.reason.trim().length < 2 ||
+      !form.startsAt ||
+      !form.endsAt ||
+      form.endsAt <= form.startsAt
+    ) {
+      toast.error(
+        "Completá el motivo y un período con fin posterior al inicio.",
+      );
+      return;
+    }
     startTransition(async () => {
       try {
         await upsertClosure({
           courtId: form.courtId === "all" ? null : form.courtId,
           reason: form.reason,
-          startsAt: new Date(form.startsAt).toISOString(),
-          endsAt: new Date(form.endsAt).toISOString(),
+          startsAt: venueDateTime(
+            form.startsAt.slice(0, 10),
+            form.startsAt.slice(11, 16),
+          ).toISOString(),
+          endsAt: venueDateTime(
+            form.endsAt.slice(0, 10),
+            form.endsAt.slice(11, 16),
+          ).toISOString(),
         });
         toast.success("Cierre registrado");
         setForm({ courtId: "all", reason: "", startsAt: "", endsAt: "" });
@@ -164,6 +190,10 @@ export function ClosuresManager({
   }
 
   function remove(id: string) {
+    if (
+      !window.confirm("¿Eliminar este cierre y volver a habilitar esos turnos?")
+    )
+      return;
     startTransition(async () => {
       try {
         await deleteClosure(id);
@@ -187,12 +217,12 @@ export function ClosuresManager({
       <CardContent className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
-            <Label>Alcance</Label>
+            <Label htmlFor="closure-court">Alcance</Label>
             <Select
               value={form.courtId}
               onValueChange={(v) => setForm({ ...form, courtId: v })}
             >
-              <SelectTrigger>
+              <SelectTrigger id="closure-court">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -206,24 +236,27 @@ export function ClosuresManager({
             </Select>
           </div>
           <div className="space-y-1">
-            <Label>Motivo</Label>
+            <Label htmlFor="closure-reason">Motivo</Label>
             <Textarea
+              id="closure-reason"
               value={form.reason}
               onChange={(e) => setForm({ ...form, reason: e.target.value })}
               rows={1}
             />
           </div>
           <div className="space-y-1">
-            <Label>Desde</Label>
+            <Label htmlFor="closure-start">Desde</Label>
             <Input
+              id="closure-start"
               type="datetime-local"
               value={form.startsAt}
               onChange={(e) => setForm({ ...form, startsAt: e.target.value })}
             />
           </div>
           <div className="space-y-1">
-            <Label>Hasta</Label>
+            <Label htmlFor="closure-end">Hasta</Label>
             <Input
+              id="closure-end"
               type="datetime-local"
               value={form.endsAt}
               onChange={(e) => setForm({ ...form, endsAt: e.target.value })}
@@ -247,24 +280,42 @@ export function ClosuresManager({
               </TableRow>
             </TableHeader>
             <TableBody>
+              {closures.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="py-6 text-center text-muted-foreground"
+                  >
+                    No hay cierres programados.
+                  </TableCell>
+                </TableRow>
+              ) : null}
               {closures.map((c) => (
                 <TableRow key={c.id}>
                   <TableCell>{c.reason}</TableCell>
                   <TableCell>
                     {c.courtId
-                      ? courts.find((x) => x.id === c.courtId)?.name ?? c.courtId
+                      ? (courts.find((x) => x.id === c.courtId)?.name ??
+                        c.courtId)
                       : "Todo el predio"}
                   </TableCell>
                   <TableCell>
-                    {new Date(c.startsAt).toLocaleString("es-AR")}
+                    {new Date(c.startsAt).toLocaleString("es-AR", {
+                      timeZone: VENUE_TIMEZONE,
+                      hour12: false,
+                    })}
                   </TableCell>
                   <TableCell>
-                    {new Date(c.endsAt).toLocaleString("es-AR")}
+                    {new Date(c.endsAt).toLocaleString("es-AR", {
+                      timeZone: VENUE_TIMEZONE,
+                      hour12: false,
+                    })}
                   </TableCell>
                   <TableCell>
                     <Button
                       size="icon"
                       variant="ghost"
+                      disabled={pending}
                       onClick={() => remove(c.id)}
                       aria-label="Eliminar"
                     >

@@ -1,0 +1,110 @@
+.admin-content {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.admin-content h1 {
+  font-family: var(--font-dm-sans), sans-serif;
+  font-size: clamp(1.5rem, 2vw, 1.875rem);
+  font-weight: 750;
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+  text-transform: none;
+  text-wrap: balance;
+}
+.admin-content h2,
+.admin-content h3,
+.admin-content [data-slot="card-title"] {
+  font-family: var(--font-dm-sans), sans-serif;
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  text-transform: none;
+}
+.admin-content [data-slot="card"] {
+  min-width: 0;
+  gap: 1rem;
+  border-radius: 1rem;
+  padding-block: 1.25rem;
+  box-shadow: none;
+}
+.admin-content [data-slot="card-header"],
+.admin-content [data-slot="card-content"] {
+  padding-inline: 1.25rem;
+}
+.admin-content [data-slot="card-description"] {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+.admin-content input,
+.admin-content textarea,
+.admin-content [data-slot="select-trigger"] {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 2.25rem;
+  font-size: 0.875rem;
+}
+.admin-content [data-slot="select-trigger"] {
+  width: 100%;
+}
+.admin-content [data-slot="table-container"] {
+  max-width: 100%;
+}
+.admin-content [data-slot="table-head"],
+.admin-content [data-slot="table-cell"] {
+  padding: 0.75rem;
+}
+.admin-content [data-slot="table-cell"] {
+  font-variant-numeric: tabular-nums;
+}
+.admin-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 3.5rem;
+}
+.admin-content .admin-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-width: 0;
+}
+.admin-nav-tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--muted);
+}
+.admin-nav-tabs a {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+}
+.admin-nav-tabs a[aria-current="page"] {
+  background: var(--card);
+  box-shadow: 0 1px 3px #102b2014;
+}
+@media (max-width: 639px) {
+  .admin-content button:not([data-slot="checkbox"]),
+  .admin-content input,
+  .admin-content select,
+  .admin-content [data-slot="select-trigger"] {
+    min-height: 2.5rem;
+  }
+  .admin-page-header {
+    flex-wrap: wrap;
+  }
+  .admin-content [data-slot="card-header"],
+  .admin-content [data-slot="card-content"] {
+    padding-inline: 1rem;
+  }
+  .admin-content input,
+  .admin-content textarea,
+  .admin-content [data-slot="select-trigger"] {
+    font-size: 1rem;
+  }
+}

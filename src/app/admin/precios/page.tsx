@@ -1,3 +1,5 @@
+import { venueDateKey } from "@/lib/services/venue-time";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { getDataAccess } from "@/lib/data";
 import { PriceRulesManager } from "@/components/admin/price-rules-manager";
 
@@ -12,14 +14,13 @@ export default async function AdminPreciosPage() {
   ]);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl uppercase">Precios</h1>
-        <p className="text-sm text-muted-foreground">
-          Reglas dinámicas y vista previa por fecha
-        </p>
-      </div>
+    <div className="admin-page">
+      <AdminPageHeader
+        title="Precios"
+        description="Definí tarifas y comprobá cuánto cuesta cada turno."
+      />
       <PriceRulesManager
+        initialDate={venueDateKey(new Date())}
         rules={rules}
         courts={courts}
         hours={hours}

@@ -1,3 +1,4 @@
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { getDataAccess } from "@/lib/data";
 import {
   ClosuresManager,
@@ -14,15 +15,15 @@ export default async function AdminHorariosPage() {
   ]);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl uppercase">Horarios</h1>
-        <p className="text-sm text-muted-foreground">
-          Horario de apertura y cierres excepcionales
-        </p>
+    <div className="admin-page">
+      <AdminPageHeader
+        title="Horarios"
+        description="Organizá la apertura semanal y los cierres excepcionales."
+      />
+      <div className="grid items-start gap-6 xl:grid-cols-2">
+        <HoursEditor hours={hours} />
+        <ClosuresManager closures={closures} courts={courts} />
       </div>
-      <HoursEditor hours={hours} />
-      <ClosuresManager closures={closures} courts={courts} />
     </div>
   );
 }

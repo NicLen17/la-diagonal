@@ -29,8 +29,13 @@ export function DashboardHourChart({
   }
 
   return (
-    <ChartContainer config={chartConfig} className="h-[220px] w-full">
-      <BarChart data={data} margin={{ left: 0, right: 0, top: 8, bottom: 0 }}>
+    <ChartContainer config={chartConfig} className="h-[180px] w-full">
+      <BarChart
+        accessibilityLayer
+        data={data}
+        barSize={28}
+        margin={{ left: 0, right: 0, top: 8, bottom: 0 }}
+      >
         <CartesianGrid vertical={false} strokeDasharray="3 3" />
         <XAxis
           dataKey="hour"
@@ -40,7 +45,12 @@ export function DashboardHourChart({
           fontSize={11}
         />
         <ChartTooltip content={<ChartTooltipContent />} />
-        <Bar dataKey="count" fill="var(--color-count)" radius={[4, 4, 0, 0]} />
+        <Bar
+          isAnimationActive={false}
+          dataKey="count"
+          fill="var(--color-count)"
+          radius={[4, 4, 0, 0]}
+        />
       </BarChart>
     </ChartContainer>
   );

@@ -27,6 +27,14 @@ export function resolvePrice(
   startsAt: Date,
   rules: PriceRule[],
 ): number {
+  return resolvePriceBreakdown(court, startsAt, rules).total;
+}
+
+export function resolvePriceBreakdown(
+  court: Court,
+  startsAt: Date,
+  rules: PriceRule[],
+) {
   const applicable = rules
     .filter(
       (r) =>
@@ -35,19 +43,17 @@ export function resolvePrice(
     )
     .sort((a, b) => b.priority - a.priority);
 
-  let price = court.basePriceArs;
-  for (const rule of applicable) {
-    if (rule.priceArs !== null) {
-      price = rule.priceArs;
-      break;
-    }
-  }
-  for (const rule of applicable) {
-    if (rule.surchargeArs) {
-      price += rule.surchargeArs;
-    }
-  }
-  return price;
+  const fixedRule = applicable.find((rule) => rule.priceArs !== null) ?? null;
+  const base = fixedRule?.priceArs ?? court.basePriceArs;
+  const surcharges = applicable.filter((rule) => Boolean(rule.surchargeArs));
+  return {
+    base,
+    fixedRule,
+    surcharges,
+    total:
+      base +
+      surcharges.reduce((sum, rule) => sum + (rule.surchargeArs ?? 0), 0),
+  };
 }
 
 export function formatArs(amount: number): string {

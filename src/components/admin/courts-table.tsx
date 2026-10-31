@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import type { Court, Sport } from "@/lib/data/types";
@@ -27,7 +27,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AdminField, AdminFormSheet } from "@/components/admin/admin-form-sheet";
+import {
+  AdminField,
+  AdminFormSheet,
+} from "@/components/admin/admin-form-sheet";
 
 type CourtFormState = {
   id?: string;
@@ -87,6 +90,10 @@ function courtToForm(court: Court): CourtFormState {
 }
 
 export function CourtsTable({ courts }: { courts: Court[] }) {
+  const [visibleCourts, removeOptimistic] = useOptimistic(
+    courts,
+    (current, id: string) => current.filter((court) => court.id !== id),
+  );
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<CourtFormState>(() =>
     emptyForm(courts.length + 1),
@@ -121,6 +128,7 @@ export function CourtsTable({ courts }: { courts: Court[] }) {
     if (!confirm("¿Eliminar esta cancha?")) return;
     startTransition(async () => {
       try {
+        removeOptimistic(id);
         await deleteCourt(id);
         toast.success("Cancha eliminada");
       } catch (error) {
@@ -133,14 +141,21 @@ export function CourtsTable({ courts }: { courts: Court[] }) {
 
   return (
     <>
-      <div className="mb-4 flex justify-end">
-        <Button onClick={openCreate}>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2>Listado de canchas</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Editá tarifas base y duración. Usá el plano para ajustar la
+            distribución.
+          </p>
+        </div>
+        <Button onClick={openCreate} disabled={pending}>
           <Plus className="size-4" />
           Nueva cancha
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-xl border bg-card">
+      <div className="hidden overflow-hidden rounded-xl border bg-card md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -153,7 +168,17 @@ export function CourtsTable({ courts }: { courts: Court[] }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {courts.map((court) => (
+            {visibleCourts.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={6}
+                  className="h-24 text-center text-muted-foreground"
+                >
+                  Todavía no hay canchas. Agregá la primera.
+                </TableCell>
+              </TableRow>
+            ) : null}
+            {visibleCourts.map((court) => (
               <TableRow key={court.id}>
                 <TableCell className="font-medium">{court.name}</TableCell>
                 <TableCell>{SPORT_LABELS[court.sport]}</TableCell>
@@ -169,16 +194,18 @@ export function CourtsTable({ courts }: { courts: Court[] }) {
                     <Button
                       size="icon"
                       variant="ghost"
+                      disabled={pending}
                       onClick={() => openEdit(court)}
-                      aria-label="Editar"
+                      aria-label={`Editar ${court.name}`}
                     >
                       <Pencil className="size-4" />
                     </Button>
                     <Button
                       size="icon"
                       variant="ghost"
+                      disabled={pending}
                       onClick={() => remove(court.id)}
-                      aria-label="Eliminar"
+                      aria-label={`Eliminar ${court.name}`}
                     >
                       <Trash2 className="size-4 text-destructive" />
                     </Button>
@@ -190,6 +217,58 @@ export function CourtsTable({ courts }: { courts: Court[] }) {
         </Table>
       </div>
 
+      <div className="space-y-3 md:hidden">
+        {visibleCourts.map((court) => (
+          <article
+            key={court.id}
+            className="space-y-3 rounded-xl border bg-card p-4"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <h3>{court.name}</h3>
+              <Badge variant={court.isActive ? "default" : "outline"}>
+                {court.isActive ? "Activa" : "Inactiva"}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {SPORT_LABELS[court.sport]} · {court.slotDurationMinutes} min por
+              turno
+            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-semibold tabular-nums">
+                {formatArs(court.basePriceArs)}{" "}
+                <span className="text-xs font-normal text-muted-foreground">
+                  base
+                </span>
+              </p>
+              <div className="flex gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pending}
+                  onClick={() => openEdit(court)}
+                >
+                  <Pencil className="size-3.5" aria-hidden="true" />
+                  Editar
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Eliminar ${court.name}`}
+                  disabled={pending}
+                  onClick={() => remove(court.id)}
+                >
+                  <Trash2 className="size-4 text-destructive" />
+                </Button>
+              </div>
+            </div>
+          </article>
+        ))}
+        {visibleCourts.length === 0 ? (
+          <p className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">
+            Todavía no hay canchas. Agregá la primera.
+          </p>
+        ) : null}
+      </div>
       <AdminFormSheet
         open={open}
         onOpenChange={setOpen}
@@ -197,7 +276,7 @@ export function CourtsTable({ courts }: { courts: Court[] }) {
         description="Datos de la cancha y posición en el plano"
         footer={
           <Button onClick={save} disabled={pending} className="h-11 w-full">
-            Guardar
+            {pending ? "Guardando…" : "Guardar cancha"}
           </Button>
         }
       >
@@ -212,7 +291,7 @@ export function CourtsTable({ courts }: { courts: Court[] }) {
             value={form.sport}
             onValueChange={(v) => setForm({ ...form, sport: v as Sport })}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger aria-label="Deporte" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -227,9 +306,7 @@ export function CourtsTable({ courts }: { courts: Court[] }) {
         <AdminField label="Descripción">
           <Textarea
             value={form.description}
-            onChange={(e) =>
-              setForm({ ...form, description: e.target.value })
-            }
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
             className="min-h-24"
           />
         </AdminField>

@@ -95,7 +95,7 @@ export function computeDashboardStats(
     weeklyRevenueArs: confirmedThisWeek.reduce((sum, r) => sum + r.priceArs, 0),
     peakHourLabel,
     occupancyHint,
-    pendingRecent: pending.slice(0, 8),
+    pendingRecent: pending.toSorted((a, b) => a.createdAt.localeCompare(b.createdAt)).slice(0, 5),
     hourlyConfirmed,
   };
 }

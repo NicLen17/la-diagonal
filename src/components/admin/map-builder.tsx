@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState, useTransition, type RefObject } from "react";
+import { useCallback, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import type { Court, Sport, Venue } from "@/lib/data/types";
 import { SPORT_LABELS } from "@/lib/data/types";
@@ -73,7 +73,7 @@ function courtToDraft(court: Court): DraftCourt {
   };
 }
 
-function newDraftCourt(venue: Venue, courts: Court[]): DraftCourt {
+function newDraftCourt(courts: DraftCourt[]): DraftCourt {
   return {
     name: `Cancha ${courts.length + 1}`,
     sport: "futbol_5",
@@ -135,15 +135,14 @@ function EditableCourtRect({
   onSelect: () => void;
   onPlanChange: (plan: RectMeters) => void;
 }) {
-  const { onPointerDownMove, onPointerDownResize } =
-    useDraggableRect({
-      rect: draft.plan,
-      onChange: onPlanChange,
-      venueWidthM: venue.planWidthM,
-      venueLengthM: venue.planLengthM,
-      keyboardEnabled: selected,
-      containerRef: mapContainerRef,
-    });
+  const { onPointerDownMove, onPointerDownResize } = useDraggableRect({
+    rect: draft.plan,
+    onChange: onPlanChange,
+    venueWidthM: venue.planWidthM,
+    venueLengthM: venue.planLengthM,
+    keyboardEnabled: selected,
+    containerRef: mapContainerRef,
+  });
 
   const left = (draft.plan.x / venue.planWidthM) * 100;
   const top = (draft.plan.y / venue.planLengthM) * 100;
@@ -172,10 +171,17 @@ function EditableCourtRect({
       aria-label={draft.name}
       data-selected={selected}
     >
-      <div
+      <button
+        type="button"
         className="absolute inset-0 z-0 cursor-grab touch-none active:cursor-grabbing"
-        role="button"
-        tabIndex={selected ? 0 : -1}
+        tabIndex={0}
+        data-court-move="true"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onSelect();
+          }
+        }}
         aria-label={`Mover ${draft.name}`}
         aria-pressed={selected}
         onPointerDown={(e) => {
@@ -187,25 +193,26 @@ function EditableCourtRect({
       <span className="pointer-events-none relative z-[1] select-none font-display text-[10px] uppercase sm:text-xs">
         {draft.name}
       </span>
-      {RESIZE_HANDLES.map((handle) => (
-        <span
-          key={handle.corner}
-          role="button"
-          aria-label={handle.label}
-          className={cn(
-            "absolute z-10 size-6 touch-none rounded-sm border shadow-sm",
-            handle.position,
-            handle.cursor,
-            selected
-              ? "border-lime-400 bg-lime-400"
-              : "border-white/70 bg-white/80",
-          )}
-          onPointerDown={(e) => {
-            onSelect();
-            onPointerDownResize(e, handle.corner);
-          }}
-        />
-      ))}
+      {selected
+        ? RESIZE_HANDLES.map((handle) => (
+            <span
+              key={handle.corner}
+              aria-hidden="true"
+              className={cn(
+                "absolute z-10 hidden size-5 touch-none sm:block rounded-sm border shadow-sm",
+                handle.position,
+                handle.cursor,
+                selected
+                  ? "border-lime-400 bg-lime-400"
+                  : "border-white/70 bg-white/80",
+              )}
+              onPointerDown={(e) => {
+                onSelect();
+                onPointerDownResize(e, handle.corner);
+              }}
+            />
+          ))
+        : null}
     </div>
   );
 }
@@ -238,9 +245,7 @@ export function MapBuilder({
       if (!selectedDraft) return;
       const key = selectedDraft.id ?? "new";
       setDrafts((prev) =>
-        prev.map((d) =>
-          (d.id ?? "new") === key ? { ...d, ...patch } : d,
-        ),
+        prev.map((d) => ((d.id ?? "new") === key ? { ...d, ...patch } : d)),
       );
     },
     [selectedDraft],
@@ -257,11 +262,6 @@ export function MapBuilder({
     startTransition(async () => {
       try {
         await updateVenueConfig({
-          depositPercent: venue.depositPercent,
-          bankAlias: venue.bankAlias,
-          bankCbu: venue.bankCbu,
-          bankHolder: venue.bankHolder,
-          whatsappE164: venue.whatsappE164,
           planWidthM,
           planLengthM,
         });
@@ -275,10 +275,7 @@ export function MapBuilder({
   }
 
   function addCourt() {
-    const draft = newDraftCourt(
-      { ...venue, planWidthM, planLengthM },
-      courts,
-    );
+    const draft = newDraftCourt(drafts);
     const tempId = `temp-${Date.now()}`;
     setDrafts((prev) => [...prev, { ...draft, id: tempId }]);
     setSelectedId(tempId);
@@ -351,6 +348,7 @@ export function MapBuilder({
       setSelectedId(drafts[0]?.id ?? null);
       return;
     }
+    if (!window.confirm(`¿Eliminar la cancha “${selectedDraft.name}”?`)) return;
     startTransition(async () => {
       try {
         await deleteCourt(selectedDraft.id!);
@@ -368,8 +366,31 @@ export function MapBuilder({
   const aspect = planWidthM / planLengthM;
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
-      <div className="space-y-4">
+    <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="min-w-0 space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="map-court">Seleccionar cancha</Label>
+          <select
+            id="map-court"
+            value={selectedDraft?.id ?? ""}
+            onChange={(e) => setSelectedId(e.target.value)}
+            className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
+          >
+            <option value="" disabled>
+              Elegí una cancha
+            </option>
+            {drafts.map((draft) => (
+              <option key={draft.id} value={draft.id}>
+                {draft.name}
+                {draft.isActive ? "" : " · Inactiva"}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">
+            Arrastrá en el plano o editá las medidas en el inspector. Con foco
+            en una cancha: Enter para seleccionar y flechas para mover.
+          </p>
+        </div>
         <Card>
           <CardHeader>
             <CardTitle>Dimensiones del predio</CardTitle>
@@ -377,7 +398,7 @@ export function MapBuilder({
               Tamaño del plano en metros (mismo sistema que el mapa público)
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-wrap items-end gap-3">
+          <CardContent className="grid grid-cols-2 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
             <div className="space-y-1">
               <Label htmlFor="planWidth">Ancho (m)</Label>
               <Input
@@ -400,7 +421,11 @@ export function MapBuilder({
                 onChange={(e) => setPlanLengthM(Number(e.target.value))}
               />
             </div>
-            <Button onClick={saveVenueDimensions} disabled={pending}>
+            <Button
+              className="col-span-2 sm:col-span-1"
+              onClick={saveVenueDimensions}
+              disabled={pending}
+            >
               Guardar dimensiones
             </Button>
           </CardContent>
@@ -417,7 +442,7 @@ export function MapBuilder({
               key={draft.id ?? draft.name}
               draft={draft}
               venue={{ ...venue, planWidthM, planLengthM }}
-              mapContainerRef={mapContainerRef as RefObject<HTMLDivElement | null>}
+              mapContainerRef={mapContainerRef}
               selected={(draft.id ?? "new") === (selectedId ?? "new")}
               onSelect={() => setSelectedId(draft.id ?? null)}
               onPlanChange={(plan) => {
@@ -433,10 +458,14 @@ export function MapBuilder({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={addCourt}>
+          <Button variant="outline" onClick={addCourt} disabled={pending}>
             Agregar cancha
           </Button>
-          <Button variant="outline" onClick={savePlanOnly} disabled={pending}>
+          <Button
+            variant="outline"
+            onClick={savePlanOnly}
+            disabled={pending || !selectedDraft}
+          >
             Guardar posición
           </Button>
         </div>
@@ -456,8 +485,9 @@ export function MapBuilder({
             <>
               <div className="grid grid-cols-2 gap-3 rounded-xl border bg-muted/30 p-3">
                 <div className="space-y-2">
-                  <Label>X (m)</Label>
+                  <Label htmlFor="map-field-0">X (m)</Label>
                   <Input
+                    id="map-field-0"
                     type="number"
                     step={0.5}
                     value={selectedDraft.plan.x}
@@ -470,8 +500,9 @@ export function MapBuilder({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Y (m)</Label>
+                  <Label htmlFor="map-field-1">Y (m)</Label>
                   <Input
+                    id="map-field-1"
                     type="number"
                     step={0.5}
                     value={selectedDraft.plan.y}
@@ -484,8 +515,9 @@ export function MapBuilder({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Ancho (m)</Label>
+                  <Label htmlFor="map-field-2">Ancho (m)</Label>
                   <Input
+                    id="map-field-2"
                     type="number"
                     step={0.5}
                     value={selectedDraft.plan.width}
@@ -498,8 +530,9 @@ export function MapBuilder({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Largo (m)</Label>
+                  <Label htmlFor="map-field-3">Largo (m)</Label>
                   <Input
+                    id="map-field-3"
                     type="number"
                     step={0.5}
                     value={selectedDraft.plan.length}
@@ -512,8 +545,9 @@ export function MapBuilder({
                   />
                 </div>
                 <div className="col-span-2 space-y-2">
-                  <Label>Rotación (°)</Label>
+                  <Label htmlFor="map-field-4">Rotación (°)</Label>
                   <Input
+                    id="map-field-4"
                     type="number"
                     value={selectedDraft.plan.rotation}
                     onChange={(e) =>
@@ -527,22 +561,21 @@ export function MapBuilder({
               </div>
 
               <div className="space-y-2">
-                <Label>Nombre</Label>
+                <Label htmlFor="map-field-5">Nombre</Label>
                 <Input
+                  id="map-field-5"
                   value={selectedDraft.name}
                   onChange={(e) => updateSelected({ name: e.target.value })}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Deporte</Label>
+                <Label htmlFor="map-sport">Deporte</Label>
                 <Select
                   value={selectedDraft.sport}
-                  onValueChange={(v) =>
-                    updateSelected({ sport: v as Sport })
-                  }
+                  onValueChange={(v) => updateSelected({ sport: v as Sport })}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger id="map-sport" className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -556,8 +589,9 @@ export function MapBuilder({
               </div>
 
               <div className="space-y-2">
-                <Label>Descripción</Label>
+                <Label htmlFor="map-field-6">Descripción</Label>
                 <Textarea
+                  id="map-field-6"
                   value={selectedDraft.description}
                   onChange={(e) =>
                     updateSelected({ description: e.target.value })
@@ -567,8 +601,11 @@ export function MapBuilder({
               </div>
 
               <div className="space-y-2">
-                <Label>Precio base ({formatArs(selectedDraft.basePriceArs)})</Label>
+                <Label htmlFor="map-base-price">
+                  Precio base ({formatArs(selectedDraft.basePriceArs)})
+                </Label>
                 <Input
+                  id="map-base-price"
                   type="number"
                   value={selectedDraft.basePriceArs}
                   onChange={(e) =>
@@ -578,8 +615,9 @@ export function MapBuilder({
               </div>
 
               <div className="space-y-2">
-                <Label>Duración turno (min)</Label>
+                <Label htmlFor="map-field-7">Duración turno (min)</Label>
                 <Input
+                  id="map-field-7"
                   type="number"
                   value={selectedDraft.slotDurationMinutes}
                   onChange={(e) =>

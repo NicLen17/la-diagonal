@@ -158,22 +158,36 @@ export function useDraggableRect({
         ),
       );
     };
-  }, [applyRect, minLength, minWidth, pointerToMeters, venueLengthM, venueWidthM]);
+  }, [
+    applyRect,
+    minLength,
+    minWidth,
+    pointerToMeters,
+    venueLengthM,
+    venueWidthM,
+  ]);
 
-  const beginDrag = useCallback((e: React.PointerEvent, mode: DragMode, corner?: ResizeCorner) => {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-      capturedRef.current = { el: e.currentTarget, pointerId: e.pointerId };
-    } catch {
-      capturedRef.current = null;
-    }
-    modeRef.current = mode;
-    if (corner) cornerRef.current = corner;
-    startRef.current = { x: e.clientX, y: e.clientY, rect: { ...rectRef.current } };
-  }, []);
+  const beginDrag = useCallback(
+    (e: React.PointerEvent, mode: DragMode, corner?: ResizeCorner) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        capturedRef.current = { el: e.currentTarget, pointerId: e.pointerId };
+      } catch {
+        capturedRef.current = null;
+      }
+      modeRef.current = mode;
+      if (corner) cornerRef.current = corner;
+      startRef.current = {
+        x: e.clientX,
+        y: e.clientY,
+        rect: { ...rectRef.current },
+      };
+    },
+    [],
+  );
 
   const onPointerDownMove = useCallback(
     (e: React.PointerEvent) => {
@@ -240,6 +254,12 @@ export function useDraggableRect({
     if (!keyboardEnabled) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        !(e.target instanceof HTMLElement) ||
+        e.target.dataset.courtMove !== "true" ||
+        e.target.getAttribute("aria-pressed") !== "true"
+      )
+        return;
       const step = e.shiftKey ? 0.1 : 1;
       switch (e.key) {
         case "ArrowLeft":
