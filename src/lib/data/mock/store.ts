@@ -1,4 +1,9 @@
-import { BLOCKING_STATUSES, type Reservation, type ReservationWithDetails } from "../types";
+import { normalizePhone } from "@/lib/services/phone";
+import {
+  BLOCKING_STATUSES,
+  type Reservation,
+  type ReservationWithDetails,
+} from "../types";
 import type { DataAccess } from "../ports";
 import type {
   CompleteReservationInput,
@@ -29,19 +34,19 @@ type Store = {
 };
 
 /** Bump when seed court plan geometry changes so the in-memory store reloads. */
-const STORE_LAYOUT_VERSION = 2;
+const STORE_LAYOUT_VERSION = 3;
 
 const globalForStore = globalThis as unknown as {
-  __laDiagonalStore?: Store;
-  __laDiagonalStoreLayout?: number;
+  __canchaManagerStore?: Store;
+  __canchaManagerStoreLayout?: number;
 };
 
 function getStore(): Store {
   if (
-    !globalForStore.__laDiagonalStore ||
-    globalForStore.__laDiagonalStoreLayout !== STORE_LAYOUT_VERSION
+    !globalForStore.__canchaManagerStore ||
+    globalForStore.__canchaManagerStoreLayout !== STORE_LAYOUT_VERSION
   ) {
-    globalForStore.__laDiagonalStore = {
+    globalForStore.__canchaManagerStore = {
       venue: structuredClone(seedVenue),
       hours: structuredClone(seedHours),
       courts: structuredClone(seedCourts),
@@ -50,9 +55,9 @@ function getStore(): Store {
       customers: structuredClone(seedCustomers),
       reservations: structuredClone(seedReservations),
     };
-    globalForStore.__laDiagonalStoreLayout = STORE_LAYOUT_VERSION;
+    globalForStore.__canchaManagerStoreLayout = STORE_LAYOUT_VERSION;
   }
-  return globalForStore.__laDiagonalStore;
+  return globalForStore.__canchaManagerStore;
 }
 
 function uid(prefix: string): string {
@@ -60,11 +65,7 @@ function uid(prefix: string): string {
 }
 
 function reservationCode(): string {
-  return `LD-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-}
-
-function digitsOnly(value: string): string {
-  return value.replace(/\D/g, "");
+  return `CM-${crypto.randomUUID().replaceAll("-", "").slice(0, 16).toUpperCase()}`;
 }
 
 function overlaps(
@@ -265,7 +266,7 @@ export const mockDataAccess: DataAccess = {
       );
       if (!reservation) return null;
       const details = withDetails(reservation);
-      if (!digitsOnly(details.customer.phoneE164).endsWith(digitsOnly(phoneDigits))) {
+      if (details.customer.phoneE164 !== normalizePhone(phoneDigits)) {
         return null;
       }
       return details;
@@ -321,13 +322,18 @@ export const mockDataAccess: DataAccess = {
     ) {
       expireHoldsInternal();
       const store = getStore();
-      const idx = store.reservations.findIndex((r) => r.id === input.reservationId);
+      const idx = store.reservations.findIndex(
+        (r) => r.id === input.reservationId,
+      );
       if (idx === -1) throw new Error("Reserva no encontrada");
       const current = store.reservations[idx];
       if (current.status !== "hold") {
         throw new Error("La reserva ya no está en hold");
       }
-      if (current.holdExpiresAt && current.holdExpiresAt < new Date().toISOString()) {
+      if (
+        current.holdExpiresAt &&
+        current.holdExpiresAt < new Date().toISOString()
+      ) {
         store.reservations[idx] = {
           ...current,
           status: "expired",
@@ -371,6 +377,7 @@ export const mockDataAccess: DataAccess = {
         paymentMethod: input.paymentMethod,
         depositArs,
         receiptFileName: input.receiptFileName ?? null,
+        receiptPath: input.receiptPath ?? null,
         notes: input.notes ?? null,
         updatedAt: new Date().toISOString(),
       };
@@ -393,16 +400,6 @@ export const mockDataAccess: DataAccess = {
   },
 };
 
-function normalizePhone(phone: string): string {
-  let digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("0")) digits = digits.slice(1);
-  if (digits.startsWith("549")) return digits;
-  if (digits.startsWith("54") && digits[2] === "9") return digits;
-  if (digits.startsWith("54")) return `549${digits.slice(2)}`;
-  if (digits.startsWith("9") && digits.length >= 10) return `54${digits}`;
-  return `549${digits}`;
-}
-
 function expireHoldsInternal(): number {
   const store = getStore();
   const now = new Date().toISOString();
@@ -415,4 +412,9 @@ function expireHoldsInternal(): number {
     return r;
   });
   return count;
+}
+
+export function resetMockDemo() {
+  globalForStore.__canchaManagerStore = undefined;
+  getStore();
 }

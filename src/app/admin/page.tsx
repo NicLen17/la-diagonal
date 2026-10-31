@@ -25,6 +25,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatTimeLabel } from "@/lib/services/availability";
+import { venueDateKey } from "@/lib/services/venue-time";
 
 export default async function AdminDashboardPage() {
   const db = getDataAccess();
@@ -35,9 +36,9 @@ export default async function AdminDashboardPage() {
   ]);
   const stats = computeDashboardStats(reservations);
 
-  const todayIso = new Date().toISOString().split("T")[0];
+  const todayIso = venueDateKey(new Date());
   const todayReservations = reservations
-    .filter((r) => r.startsAt.startsWith(todayIso))
+    .filter((r) => venueDateKey(new Date(r.startsAt)) === todayIso && ["pending", "confirmed"].includes(r.status))
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
 
   return (
@@ -53,19 +54,27 @@ export default async function AdminDashboardPage() {
             {venue.name}
           </h1>
           <p className="text-xs text-muted-foreground sm:text-sm">
-            Monitoreo en tiempo real de canchas, turnos, señas y ocupación en Tafí Viejo.
+            Monitoreo en tiempo real de canchas, turnos, señas y ocupación en
+            Tafí Viejo.
           </p>
         </div>
 
         <div className="flex flex-wrap gap-2.5">
-          <Button asChild className="bg-lime-400 font-bold text-navy-950 hover:bg-lime-300 h-11 px-5">
+          <Button
+            asChild
+            className="bg-lime-400 font-bold text-navy-950 hover:bg-lime-300 h-11 px-5"
+          >
             <Link href="/admin/reservas">
               <PlusIcon className="size-4 mr-1.5" />
-              Nueva Reserva
+              Gestionar reservas
             </Link>
           </Button>
 
-          <Button asChild variant="outline" className="h-11 px-4 text-xs font-semibold">
+          <Button
+            asChild
+            variant="outline"
+            className="h-11 px-4 text-xs font-semibold"
+          >
             <Link href="/admin/mapa">
               <LandPlotIcon className="size-4 mr-1.5 text-lime-500" />
               Mapa en Vivo
@@ -109,10 +118,13 @@ export default async function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold font-display tracking-tight sm:text-3xl text-foreground">
-              {stats.confirmedTodayCount} <span className="text-xs font-normal text-muted-foreground font-sans">turnos</span>
+              {stats.confirmedTodayCount}{" "}
+              <span className="text-xs font-normal text-muted-foreground font-sans">
+                turnos
+              </span>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              De {courts.length * 6} turnos totales disponibles
+              En {courts.filter(court => court.isActive).length} canchas activas
             </p>
           </CardContent>
         </Card>
@@ -132,7 +144,7 @@ export default async function AdminDashboardPage() {
               {stats.occupancyHint}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Horas pico: 19:00 a 23:00 hs
+              Según las reservas confirmadas de esta semana
             </p>
           </CardContent>
         </Card>
@@ -141,7 +153,7 @@ export default async function AdminDashboardPage() {
         <Card className="border-border bg-card shadow-sm hover:border-amber-400/50 transition">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardDescription className="text-xs font-semibold uppercase tracking-wider">
-              Señas por Validar
+              Reservas por revisar
             </CardDescription>
             <div className="flex size-9 items-center justify-center rounded-xl bg-rose-400/10 text-rose-500">
               <ClockIcon className="size-5" />
@@ -152,12 +164,17 @@ export default async function AdminDashboardPage() {
               <div className="text-2xl font-bold font-display tracking-tight sm:text-3xl text-foreground">
                 {stats.pendingCount}
               </div>
-              <Button asChild variant="outline" size="sm" className="text-xs h-8">
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="text-xs h-8"
+              >
                 <Link href="/admin/reservas?status=pending">Revisar</Link>
               </Button>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Esperando comprobante de pago
+              Pendientes de revisión manual
             </p>
           </CardContent>
         </Card>
@@ -201,8 +218,15 @@ export default async function AdminDashboardPage() {
                     Turnos programados para el día de la fecha
                   </CardDescription>
                 </div>
-                <Button asChild variant="ghost" size="sm" className="text-xs text-lime-500">
-                  <Link href="/admin/reservas?tab=agenda">Ver agenda completa →</Link>
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-lime-500"
+                >
+                  <Link href="/admin/reservas?tab=agenda">
+                    Ver agenda completa →
+                  </Link>
                 </Button>
               </div>
             </CardHeader>
@@ -214,7 +238,7 @@ export default async function AdminDashboardPage() {
               ) : (
                 <div className="space-y-2.5">
                   {todayReservations.slice(0, 5).map((res) => {
-                    const waUrl = `https://wa.me/${res.customer.phoneE164.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${res.customer.fullName}, te escribimos de La Diagonal para confirmar tu turno de hoy a las ${formatTimeLabel(res.startsAt)} hs.`)}`;
+                    const waUrl = `https://wa.me/${res.customer.phoneE164.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${res.customer.fullName}, te escribimos de Cancha Manager para confirmar tu turno de hoy a las ${formatTimeLabel(res.startsAt)} hs.`)}`;
                     return (
                       <div
                         key={res.id}
@@ -223,9 +247,13 @@ export default async function AdminDashboardPage() {
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-foreground">
-                              {formatTimeLabel(res.startsAt)} – {formatTimeLabel(res.endsAt)} hs
+                              {formatTimeLabel(res.startsAt)} –{" "}
+                              {formatTimeLabel(res.endsAt)} hs
                             </span>
-                            <Badge variant="secondary" className="text-[10px] uppercase">
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px] uppercase"
+                            >
                               {res.court.name}
                             </Badge>
                           </div>
@@ -238,7 +266,12 @@ export default async function AdminDashboardPage() {
                           <span className="font-bold text-lime-500">
                             {formatArs(res.priceArs)}
                           </span>
-                          <Button asChild variant="outline" size="sm" className="h-8 px-2.5 text-[11px]">
+                          <Button
+                            asChild
+                            variant="outline"
+                            size="sm"
+                            className="h-8 px-2.5 text-[11px]"
+                          >
                             <a href={waUrl} target="_blank" rel="noreferrer">
                               <MessageCircleIcon className="size-3.5 mr-1 text-lime-500" />
                               WhatsApp

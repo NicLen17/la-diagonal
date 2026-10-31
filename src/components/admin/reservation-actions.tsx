@@ -36,6 +36,11 @@ export function ReservationStatusActions({
   const [pending, startTransition] = useTransition();
 
   function updateStatus(status: "confirmed" | "cancelled" | "pending") {
+    if (
+      status === "cancelled" &&
+      !window.confirm("¿Cancelar esta reserva y liberar el turno?")
+    )
+      return;
     startTransition(async () => {
       setOptimisticStatus(status);
       try {
@@ -56,23 +61,39 @@ export function ReservationStatusActions({
     });
   }
 
-  if (optimisticStatus !== "pending" && optimisticStatus !== "hold") {
+  const receipt = reservation.receiptPath ? (
+    <a
+      href={`/admin/comprobantes/${reservation.id}`}
+      target="_blank"
+      rel="noreferrer"
+      className="text-xs font-semibold underline underline-offset-4"
+    >
+      Ver comprobante
+    </a>
+  ) : null;
+  if (optimisticStatus !== "pending" && optimisticStatus !== "confirmed") {
     return (
-      <Badge variant={optimisticStatus === "confirmed" ? "default" : "secondary"}>
-        {STATUS_LABELS[optimisticStatus]}
-      </Badge>
+      <div className="flex flex-wrap items-center gap-2">
+        {receipt}
+        <Badge variant="secondary">{STATUS_LABELS[optimisticStatus]}</Badge>
+      </div>
     );
   }
 
   return (
     <div className={compact ? "flex gap-1" : "flex flex-wrap gap-2"}>
-      <Button
-        size={compact ? "sm" : "default"}
-        disabled={pending}
-        onClick={() => updateStatus("confirmed")}
-      >
-        Confirmar
-      </Button>
+      {receipt}
+      {optimisticStatus === "confirmed" ? (
+        <Badge>Confirmada</Badge>
+      ) : (
+        <Button
+          size={compact ? "sm" : "default"}
+          disabled={pending}
+          onClick={() => updateStatus("confirmed")}
+        >
+          Confirmar
+        </Button>
+      )}
       <Button
         size={compact ? "sm" : "default"}
         variant="outline"
@@ -95,7 +116,9 @@ export function PendingReservationsList({
       <Card>
         <CardHeader>
           <CardTitle>Pendientes recientes</CardTitle>
-          <CardDescription>No hay reservas pendientes de confirmación</CardDescription>
+          <CardDescription>
+            No hay reservas pendientes de confirmación
+          </CardDescription>
         </CardHeader>
       </Card>
     );
@@ -123,7 +146,8 @@ export function PendingReservationsList({
                 {format(new Date(reservation.startsAt), "EEE d MMM · HH:mm", {
                   locale: es,
                 })}{" "}
-                · {reservation.customer.fullName} · {formatArs(reservation.priceArs)}
+                · {reservation.customer.fullName} ·{" "}
+                {formatArs(reservation.priceArs)}
               </p>
             </div>
             <ReservationStatusActions reservation={reservation} compact />

@@ -1,13 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import {
-  MessageCircleIcon,
-  PhoneIcon,
-  SearchIcon,
-} from "lucide-react";
+import { MessageCircleIcon, PhoneIcon, SearchIcon } from "lucide-react";
 import type { Court, ReservationWithDetails } from "@/lib/data/types";
 import {
   PAYMENT_LABELS,
@@ -61,15 +58,24 @@ export function ReservationsManager({
   reservations,
   courts,
   defaultTab = "tabla",
+  defaultStatus = "all",
 }: {
   reservations: ReservationWithDetails[];
   courts: Court[];
   defaultTab?: "tabla" | "agenda";
+  defaultStatus?: string;
 }) {
+  const router = useRouter();
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") router.refresh();
+    }, 15000);
+    return () => window.clearInterval(timer);
+  }, [router]);
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [courtFilter, setCourtFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>(defaultStatus);
   const [paymentFilter, setPaymentFilter] = useState<string>("all");
 
   const filtered = useMemo(() => {
@@ -91,7 +97,14 @@ export function ReservationsManager({
         return false;
       return true;
     });
-  }, [courtFilter, dateFilter, paymentFilter, reservations, searchQuery, statusFilter]);
+  }, [
+    courtFilter,
+    dateFilter,
+    paymentFilter,
+    reservations,
+    searchQuery,
+    statusFilter,
+  ]);
 
   const agendaDate = dateFilter || format(new Date(), "yyyy-MM-dd");
   const agendaItems = filtered.filter(
@@ -127,8 +140,14 @@ export function ReservationsManager({
         {/* Filter Bar */}
         <div className="my-5 grid gap-3 rounded-2xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4 shadow-sm">
           <div className="space-y-1">
-            <Label className="text-xs font-semibold text-muted-foreground">Fecha</Label>
+            <Label
+              htmlFor="reservation-date"
+              className="text-xs font-semibold text-muted-foreground"
+            >
+              Fecha
+            </Label>
             <Input
+              id="reservation-date"
               type="date"
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
@@ -136,7 +155,9 @@ export function ReservationsManager({
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs font-semibold text-muted-foreground">Cancha</Label>
+            <Label className="text-xs font-semibold text-muted-foreground">
+              Cancha
+            </Label>
             <Select value={courtFilter} onValueChange={setCourtFilter}>
               <SelectTrigger className="h-9 text-xs">
                 <SelectValue placeholder="Todas las canchas" />
@@ -152,7 +173,9 @@ export function ReservationsManager({
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs font-semibold text-muted-foreground">Estado</Label>
+            <Label className="text-xs font-semibold text-muted-foreground">
+              Estado
+            </Label>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="h-9 text-xs">
                 <SelectValue placeholder="Todos los estados" />
@@ -168,7 +191,9 @@ export function ReservationsManager({
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs font-semibold text-muted-foreground">Método de Pago</Label>
+            <Label className="text-xs font-semibold text-muted-foreground">
+              Método de Pago
+            </Label>
             <Select value={paymentFilter} onValueChange={setPaymentFilter}>
               <SelectTrigger className="h-9 text-xs">
                 <SelectValue placeholder="Todos los métodos" />
@@ -193,19 +218,30 @@ export function ReservationsManager({
                 <TableHeader>
                   <TableRow className="bg-muted/40">
                     <TableHead className="font-bold text-xs">Código</TableHead>
-                    <TableHead className="font-bold text-xs">Fecha & Hora</TableHead>
+                    <TableHead className="font-bold text-xs">
+                      Fecha & Hora
+                    </TableHead>
                     <TableHead className="font-bold text-xs">Cancha</TableHead>
-                    <TableHead className="font-bold text-xs">Cliente / Teléfono</TableHead>
+                    <TableHead className="font-bold text-xs">
+                      Cliente / Teléfono
+                    </TableHead>
                     <TableHead className="font-bold text-xs">Estado</TableHead>
                     <TableHead className="font-bold text-xs">Pago</TableHead>
-                    <TableHead className="font-bold text-xs">Total / Seña</TableHead>
-                    <TableHead className="text-right font-bold text-xs">Acciones</TableHead>
+                    <TableHead className="font-bold text-xs">
+                      Total / Seña
+                    </TableHead>
+                    <TableHead className="text-right font-bold text-xs">
+                      Acciones
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="h-32 text-center text-muted-foreground text-xs">
+                      <TableCell
+                        colSpan={8}
+                        className="h-32 text-center text-muted-foreground text-xs"
+                      >
                         No se encontraron reservas con los filtros aplicados.
                       </TableCell>
                     </TableRow>
@@ -213,28 +249,39 @@ export function ReservationsManager({
                     filtered.map((r) => {
                       const waChat = waLink(
                         r.customer.phoneE164,
-                        `¡Hola ${r.customer.fullName}! Te escribimos desde el Complejo La Diagonal sobre tu reserva ${r.code}.`
+                        `¡Hola ${r.customer.fullName}! Te escribimos desde ${r.venue.name} sobre tu reserva ${r.code}.`,
                       );
                       return (
-                        <TableRow key={r.id} className="hover:bg-muted/30 transition">
+                        <TableRow
+                          key={r.id}
+                          className="hover:bg-muted/30 transition"
+                        >
                           <TableCell className="font-mono text-xs font-bold text-lime-600 dark:text-lime-400">
                             {r.code}
                           </TableCell>
                           <TableCell className="text-xs">
                             <span className="font-semibold block">
-                              {format(new Date(r.startsAt), "HH:mm")} – {format(new Date(r.endsAt), "HH:mm")} hs
+                              {format(new Date(r.startsAt), "HH:mm")} –{" "}
+                              {format(new Date(r.endsAt), "HH:mm")} hs
                             </span>
                             <span className="text-[11px] text-muted-foreground capitalize">
-                              {format(new Date(r.startsAt), "EEE d MMM", { locale: es })}
+                              {format(new Date(r.startsAt), "EEE d MMM", {
+                                locale: es,
+                              })}
                             </span>
                           </TableCell>
                           <TableCell className="text-xs font-semibold">
                             {r.court.name}
                           </TableCell>
                           <TableCell className="text-xs">
-                            <span className="font-medium block">{r.customer.fullName}</span>
+                            <span className="font-medium block">
+                              {r.customer.fullName}
+                            </span>
                             <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
-                              <a href={`tel:${r.customer.phoneE164}`} className="hover:underline flex items-center gap-1">
+                              <a
+                                href={`tel:${r.customer.phoneE164}`}
+                                className="hover:underline flex items-center gap-1"
+                              >
                                 <PhoneIcon className="size-3" />
                                 {r.customer.phoneE164}
                               </a>
@@ -250,7 +297,10 @@ export function ReservationsManager({
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant={statusVariant(r.status)} className="text-[10px] font-semibold">
+                            <Badge
+                              variant={statusVariant(r.status)}
+                              className="text-[10px] font-semibold"
+                            >
                               {STATUS_LABELS[r.status]}
                             </Badge>
                           </TableCell>
@@ -258,9 +308,13 @@ export function ReservationsManager({
                             {PAYMENT_LABELS[r.paymentMethod as PaymentMethod]}
                           </TableCell>
                           <TableCell className="text-xs">
-                            <span className="font-bold text-foreground block">{formatArs(r.priceArs)}</span>
+                            <span className="font-bold text-foreground block">
+                              {formatArs(r.priceArs)}
+                            </span>
                             {r.depositArs > 0 ? (
-                              <span className="text-[10px] text-lime-600 dark:text-lime-400">Seña: {formatArs(r.depositArs)}</span>
+                              <span className="text-[10px] text-lime-600 dark:text-lime-400">
+                                Seña: {formatArs(r.depositArs)}
+                              </span>
                             ) : null}
                           </TableCell>
                           <TableCell className="text-right">
@@ -281,7 +335,11 @@ export function ReservationsManager({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Partidos programados para el {format(new Date(agendaDate), "EEEE d 'de' MMMM", { locale: es })}:
+                Partidos programados para el{" "}
+                {format(new Date(agendaDate), "EEEE d 'de' MMMM", {
+                  locale: es,
+                })}
+                :
               </p>
               <Badge variant="outline" className="text-xs">
                 {agendaItems.length} turnos
@@ -303,7 +361,7 @@ export function ReservationsManager({
                   .map((r) => {
                     const waChat = waLink(
                       r.customer.phoneE164,
-                      `¡Hola ${r.customer.fullName}! Te escribimos desde el Complejo La Diagonal para confirmar tu partido hoy a las ${format(new Date(r.startsAt), "HH:mm")} hs en ${r.court.name}.`
+                      `¡Hola ${r.customer.fullName}! Te escribimos desde ${r.venue.name} para confirmar tu partido hoy a las ${format(new Date(r.startsAt), "HH:mm")} hs en ${r.court.name}.`,
                     );
                     return (
                       <div
@@ -312,7 +370,10 @@ export function ReservationsManager({
                       >
                         <div>
                           <div className="flex items-center justify-between">
-                            <Badge variant="secondary" className="text-xs font-bold">
+                            <Badge
+                              variant="secondary"
+                              className="text-xs font-bold"
+                            >
                               {r.court.name}
                             </Badge>
                             <span className="font-mono text-xs font-bold text-lime-500">
@@ -322,7 +383,8 @@ export function ReservationsManager({
 
                           <div className="mt-3">
                             <span className="text-xl font-bold font-display text-foreground">
-                              {format(new Date(r.startsAt), "HH:mm")} – {format(new Date(r.endsAt), "HH:mm")} hs
+                              {format(new Date(r.startsAt), "HH:mm")} –{" "}
+                              {format(new Date(r.endsAt), "HH:mm")} hs
                             </span>
                             <p className="text-xs font-semibold text-foreground mt-1">
                               {r.customer.fullName}
@@ -344,7 +406,12 @@ export function ReservationsManager({
                           </div>
 
                           <div className="flex items-center gap-2">
-                            <Button asChild variant="outline" size="sm" className="h-8 px-2 text-xs">
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="sm"
+                              className="h-8 px-2 text-xs"
+                            >
                               <a href={waChat} target="_blank" rel="noreferrer">
                                 <MessageCircleIcon className="size-3.5 text-lime-500" />
                               </a>

@@ -18,14 +18,19 @@ import {
 export function AdminLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "/admin";
+  const requestedNext = searchParams.get("next") ?? "/admin";
+  const next = /^\/admin(?:\/|\?|$)/.test(requestedNext)
+    ? requestedNext
+    : "/admin";
   const [passcode, setPasscode] = useState("");
   const [pending, startTransition] = useTransition();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      const result = await adminLogin(passcode);
+      const credentials = new FormData();
+      credentials.set("passcode", passcode);
+      const result = await adminLogin(credentials);
       if (!result.ok) {
         toast.error(result.error);
         return;
@@ -43,7 +48,7 @@ export function AdminLoginForm() {
           Panel Admin
         </CardTitle>
         <CardDescription>
-          Ingresá la clave de acceso para gestionar La Diagonal
+          Ingresá la clave de acceso para gestionar Cancha Manager
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -52,6 +57,7 @@ export function AdminLoginForm() {
             <Label htmlFor="passcode">Clave de acceso</Label>
             <Input
               id="passcode"
+              name="passcode"
               type="password"
               autoComplete="current-password"
               value={passcode}

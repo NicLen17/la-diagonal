@@ -16,11 +16,7 @@ import {
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import {
-  Field,
-  FieldError,
-  FieldLabel,
-} from "@/components/ui/field";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,7 +27,10 @@ import { formatArs } from "@/lib/services/pricing";
 import { completeReservationAction } from "@/lib/services/reservations";
 import { cn } from "@/lib/utils";
 
-const formSchema = completeReservationSchema.omit({ reservationId: true });
+const formSchema = completeReservationSchema.omit({
+  reservationId: true,
+  receiptPath: true,
+});
 
 type FormState = z.infer<typeof formSchema>;
 
@@ -47,9 +46,21 @@ const PAYMENT_META: Record<
   PaymentMethod,
   { icon: typeof WalletIcon; short: string; badge: string }
 > = {
-  cash: { icon: BanknoteIcon, short: "Efectivo", badge: "Pagar al llegar al predio" },
-  deposit: { icon: WalletIcon, short: "Seña Bancaria", badge: "Abonar seña para fijar turno" },
-  transfer_full: { icon: LandmarkIcon, short: "Total 100%", badge: "Transferencia total adelantada" },
+  cash: {
+    icon: BanknoteIcon,
+    short: "Efectivo",
+    badge: "Pagar al llegar al predio",
+  },
+  deposit: {
+    icon: WalletIcon,
+    short: "Seña Bancaria",
+    badge: "Abonar seña para fijar turno",
+  },
+  transfer_full: {
+    icon: LandmarkIcon,
+    short: "Total 100%",
+    badge: "Transferencia total adelantada",
+  },
 };
 
 export function ConfirmForm({
@@ -60,8 +71,11 @@ export function ConfirmForm({
 }: ConfirmFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof FormState, string>>
+  >({});
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("deposit");
+  const [receipt, setReceipt] = useState<File | null>(null);
   const [receiptFileName, setReceiptFileName] = useState<string | undefined>();
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
 
@@ -114,6 +128,7 @@ export function ConfirmForm({
         fieldErrors.receiptFileName = "Adjuntá el comprobante de transferencia";
       }
       setErrors(fieldErrors);
+      document.getElementById(Object.keys(fieldErrors)[0])?.focus();
       return;
     }
 
@@ -125,10 +140,12 @@ export function ConfirmForm({
     setErrors({});
     startTransition(async () => {
       try {
-        const reservation = await completeReservationAction({
-          reservationId,
-          ...parsed.data,
-        });
+        const payload = new FormData();
+        for (const [key, value] of Object.entries(parsed.data))
+          if (value !== undefined) payload.set(key, String(value));
+        payload.set("reservationId", reservationId);
+        if (needsReceipt && receipt) payload.set("receipt", receipt);
+        const reservation = await completeReservationAction(payload);
         router.push(`/reserva/${reservation.code}?wa=1`);
       } catch (error) {
         toast.error(
@@ -149,12 +166,12 @@ export function ConfirmForm({
             "flex items-center justify-between rounded-2xl border px-4 py-3 text-sm transition-colors",
             secondsLeft > 180
               ? "border-lime-400/30 bg-lime-400/10 text-lime-300"
-              : "border-amber-400/40 bg-amber-400/15 text-amber-200"
+              : "border-amber-400/40 bg-amber-400/15 text-amber-200",
           )}
-          role="status"
+          aria-live="off"
         >
           <div className="flex items-center gap-2">
-            <ClockIcon className="size-4 shrink-0 animate-pulse" />
+            <ClockIcon className="size-4 shrink-0 " />
             <span className="text-xs sm:text-sm">
               {secondsLeft > 0
                 ? "Tiempo restante para completar la reserva:"
@@ -170,6 +187,10 @@ export function ConfirmForm({
         </div>
       ) : null}
 
+      <p className="rounded-xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm text-amber-100">
+        Demo: no transfieras dinero. Para probar, adjuntá una imagen o PDF de
+        ejemplo. La reserva queda pendiente de revisión.
+      </p>
       {/* Customer Info Section */}
       <div className="space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-wider text-lime-400">
@@ -178,7 +199,10 @@ export function ConfirmForm({
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field data-invalid={!!errors.fullName}>
-            <FieldLabel htmlFor="fullName" className="text-xs font-semibold text-slate-300">
+            <FieldLabel
+              htmlFor="fullName"
+              className="text-xs font-semibold text-slate-300"
+            >
               Nombre y Apellido *
             </FieldLabel>
             <Input
@@ -189,11 +213,16 @@ export function ConfirmForm({
               required
               className="h-11 border-white/15 bg-white/5 text-white placeholder:text-slate-500 focus:border-lime-400"
             />
-            <FieldError className="text-xs text-rose-400">{errors.fullName}</FieldError>
+            <FieldError className="text-xs text-rose-400">
+              {errors.fullName}
+            </FieldError>
           </Field>
 
           <Field data-invalid={!!errors.phone}>
-            <FieldLabel htmlFor="phone" className="text-xs font-semibold text-slate-300">
+            <FieldLabel
+              htmlFor="phone"
+              className="text-xs font-semibold text-slate-300"
+            >
               Teléfono WhatsApp *
             </FieldLabel>
             <Input
@@ -202,27 +231,36 @@ export function ConfirmForm({
               type="tel"
               inputMode="tel"
               autoComplete="tel"
-              placeholder="Ej. 381 664 3122"
+              placeholder="Ej. 381 337 9225"
               required
               className="h-11 border-white/15 bg-white/5 text-white placeholder:text-slate-500 focus:border-lime-400"
             />
-            <FieldError className="text-xs text-rose-400">{errors.phone}</FieldError>
+            <FieldError className="text-xs text-rose-400">
+              {errors.phone}
+            </FieldError>
           </Field>
         </div>
 
         <Field data-invalid={!!errors.email}>
-          <FieldLabel htmlFor="email" className="text-xs font-semibold text-slate-300">
-            Email de contacto <span className="font-normal text-slate-500">(opcional para recibir el voucher)</span>
+          <FieldLabel
+            htmlFor="email"
+            className="text-xs font-semibold text-slate-300"
+          >
+            Email de contacto{" "}
+            <span className="font-normal text-slate-500">(opcional)</span>
           </FieldLabel>
           <Input
             id="email"
             name="email"
             type="email"
             autoComplete="email"
-            placeholder="tuemail@gmail.com"
+            placeholder="nombre@ejemplo.com"
+            spellCheck={false}
             className="h-11 border-white/15 bg-white/5 text-white placeholder:text-slate-500 focus:border-lime-400"
           />
-          <FieldError className="text-xs text-rose-400">{errors.email}</FieldError>
+          <FieldError className="text-xs text-rose-400">
+            {errors.email}
+          </FieldError>
         </Field>
       </div>
 
@@ -233,7 +271,10 @@ export function ConfirmForm({
             2. Forma de Pago
           </h3>
           <span className="text-xs font-semibold text-white">
-            Total Turno: <strong className="text-lime-400 text-sm">{formatArs(priceArs)}</strong>
+            Total Turno:{" "}
+            <strong className="text-lime-400 text-sm">
+              {formatArs(priceArs)}
+            </strong>
           </span>
         </div>
 
@@ -251,10 +292,10 @@ export function ConfirmForm({
                 key={method}
                 htmlFor={`pay-${method}`}
                 className={cn(
-                  "relative flex cursor-pointer flex-col justify-between rounded-2xl border p-4 transition-all duration-200 active:scale-[0.98]",
+                  "relative flex cursor-pointer flex-col justify-between focus-within:ring-2 focus-within:ring-lime-300 rounded-2xl border p-4 transition-[background-color,border-color,box-shadow,transform] duration-200 active:scale-[0.98]",
                   isSelected
                     ? "border-lime-400 bg-lime-400/15 ring-2 ring-lime-400 text-white shadow-lg shadow-lime-400/10"
-                    : "border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:bg-white/10"
+                    : "border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:bg-white/10",
                 )}
               >
                 <RadioGroupItem
@@ -263,7 +304,14 @@ export function ConfirmForm({
                   className="sr-only"
                 />
                 <div className="flex items-center justify-between">
-                  <div className={cn("flex size-9 items-center justify-center rounded-xl", isSelected ? "bg-lime-400 text-navy-950" : "bg-white/10 text-white")}>
+                  <div
+                    className={cn(
+                      "flex size-9 items-center justify-center rounded-xl",
+                      isSelected
+                        ? "bg-lime-400 text-navy-950"
+                        : "bg-white/10 text-white",
+                    )}
+                  >
                     <Icon className="size-5" />
                   </div>
                   {isSelected ? (
@@ -279,8 +327,8 @@ export function ConfirmForm({
                     {method === "deposit"
                       ? `Seña de ${formatArs(depositArs)} (resta ${formatArs(remainingAtVenue)})`
                       : method === "cash"
-                      ? "Pagas la totalidad al ingresar"
-                      : `Total de ${formatArs(priceArs)}`}
+                        ? "Pagas la totalidad al ingresar"
+                        : `Total de ${formatArs(priceArs)}`}
                   </span>
                 </div>
               </label>
@@ -296,24 +344,30 @@ export function ConfirmForm({
             <div className="flex items-center gap-2">
               <LandmarkIcon className="size-4 text-lime-400" />
               <span className="text-xs font-bold uppercase tracking-wider text-white">
-                Datos Bancarios para Transferir
+                Datos bancarios de ejemplo
               </span>
             </div>
             <span className="text-xs font-bold text-lime-400">
-              {paymentMethod === "deposit" ? `Monto Seña: ${formatArs(depositArs)}` : `Monto Total: ${formatArs(priceArs)}`}
+              {paymentMethod === "deposit"
+                ? `Monto Seña: ${formatArs(depositArs)}`
+                : `Monto Total: ${formatArs(priceArs)}`}
             </span>
           </div>
 
           <div className="grid gap-2 text-xs">
             <div className="flex items-center justify-between rounded-xl bg-black/30 p-2.5">
               <span className="text-slate-400">Titular:</span>
-              <span className="font-semibold text-white">{venue.bankHolder}</span>
+              <span className="font-semibold text-white">
+                {venue.bankHolder}
+              </span>
             </div>
 
             <div className="flex items-center justify-between rounded-xl bg-black/30 p-2.5">
               <span className="text-slate-400">Alias:</span>
               <div className="flex items-center gap-2">
-                <span className="font-mono font-bold text-lime-400">{venue.bankAlias}</span>
+                <span className="font-mono font-bold text-lime-400">
+                  {venue.bankAlias}
+                </span>
                 <button
                   type="button"
                   onClick={() => handleCopy(venue.bankAlias, "Alias")}
@@ -328,7 +382,9 @@ export function ConfirmForm({
             <div className="flex items-center justify-between rounded-xl bg-black/30 p-2.5">
               <span className="text-slate-400">CBU:</span>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-white">{venue.bankCbu}</span>
+                <span className="font-mono text-xs text-white">
+                  {venue.bankCbu}
+                </span>
                 <button
                   type="button"
                   onClick={() => handleCopy(venue.bankCbu, "CBU")}
@@ -346,7 +402,10 @@ export function ConfirmForm({
       {/* Receipt Upload */}
       {needsReceipt ? (
         <Field data-invalid={!!errors.receiptFileName}>
-          <FieldLabel htmlFor="receipt" className="text-xs font-semibold text-slate-300">
+          <FieldLabel
+            htmlFor="receipt"
+            className="text-xs font-semibold text-slate-300"
+          >
             Adjuntar Comprobante de Transferencia *
           </FieldLabel>
           <label
@@ -355,40 +414,71 @@ export function ConfirmForm({
               "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-6 text-center transition-all",
               receiptFileName
                 ? "border-lime-400 bg-lime-400/10 text-white"
-                : "border-white/20 bg-white/5 text-slate-300 hover:border-lime-400/50 hover:bg-white/10"
+                : "border-white/20 bg-white/5 text-slate-300 hover:border-lime-400/50 hover:bg-white/10",
             )}
           >
             <UploadIcon className="size-7 text-lime-400" />
             {receiptFileName ? (
               <div>
-                <span className="block text-sm font-bold text-lime-400">{receiptFileName}</span>
-                <span className="text-xs text-slate-400">Tocá para cambiar archivo</span>
+                <span className="block text-sm font-bold text-lime-400">
+                  {receiptFileName}
+                </span>
+                <span className="text-xs text-slate-400">
+                  Tocá para cambiar archivo
+                </span>
               </div>
             ) : (
               <div>
-                <span className="block text-sm font-semibold text-white">Subir comprobante o captura</span>
-                <span className="text-xs text-slate-400">Formato JPG, PNG o PDF</span>
+                <span className="block text-sm font-semibold text-white">
+                  Subir comprobante o captura
+                </span>
+                <span className="text-xs text-slate-400">
+                  JPG, PNG, WEBP o PDF · Hasta 3 MB
+                </span>
               </div>
             )}
             <Input
               id="receipt"
               type="file"
-              accept="image/*,.pdf"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
               className="sr-only"
               onChange={(e) => {
                 const file = e.target.files?.[0];
+                if (
+                  file &&
+                  (file.size > 3 * 1024 * 1024 ||
+                    ![
+                      "image/jpeg",
+                      "image/png",
+                      "image/webp",
+                      "application/pdf",
+                    ].includes(file.type))
+                ) {
+                  toast.error("Elegí un JPG, PNG, WEBP o PDF de hasta 3 MB");
+                  e.target.value = "";
+                  setReceipt(null);
+                  setReceiptFileName(undefined);
+                  return;
+                }
+                setReceipt(file ?? null);
                 setReceiptFileName(file?.name);
               }}
             />
           </label>
-          <FieldError className="text-xs text-rose-400">{errors.receiptFileName}</FieldError>
+          <FieldError className="text-xs text-rose-400">
+            {errors.receiptFileName}
+          </FieldError>
         </Field>
       ) : null}
 
       {/* Optional Notes */}
       <Field>
-        <FieldLabel htmlFor="notes" className="text-xs font-semibold text-slate-300">
-          Aclaraciones o Pedidos Especiales <span className="font-normal text-slate-500">(opcional)</span>
+        <FieldLabel
+          htmlFor="notes"
+          className="text-xs font-semibold text-slate-300"
+        >
+          Aclaraciones o Pedidos Especiales{" "}
+          <span className="font-normal text-slate-500">(opcional)</span>
         </FieldLabel>
         <Textarea
           id="notes"
@@ -409,7 +499,7 @@ export function ConfirmForm({
           {isPending ? (
             <div className="flex items-center justify-center gap-2">
               <Loader2Icon className="animate-spin size-5" />
-              <span>Confirmando reserva...</span>
+              <span>Registrando reserva…</span>
             </div>
           ) : (
             <div className="flex items-center justify-center gap-2">

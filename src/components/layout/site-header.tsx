@@ -1,14 +1,7 @@
 import Link from "next/link";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import {
-  CalendarDaysIcon,
-  GraduationCapIcon,
-  MenuIcon,
-  PhoneIcon,
-  TrophyIcon,
-  UtensilsIcon,
-} from "lucide-react";
+import { MenuIcon, ArrowUpRightIcon } from "lucide-react";
+import { BrandMark } from "./brand-mark";
+import { BRAND } from "@/lib/brand";
 import {
   Sheet,
   SheetClose,
@@ -18,120 +11,115 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 
-const links = [
-  { href: "/#deportes", label: "Canchas", icon: TrophyIcon },
-  { href: "/#escuelita", label: "Escuelita", icon: GraduationCapIcon },
-  { href: "/#bar", label: "Bar & 3er Tiempo", icon: UtensilsIcon },
-  { href: "/reservar", label: "Reservar Online", icon: CalendarDaysIcon },
-  { href: "/mis-reservas", label: "Mis Reservas", icon: CalendarDaysIcon },
-  { href: "/#contacto", label: "Contacto", icon: PhoneIcon },
-];
-
-export function SiteHeader() {
+export function SiteHeader({ marketing = false }: { marketing?: boolean }) {
+  const links = marketing
+    ? [
+        { href: "/#producto", label: "El producto" },
+        { href: "/#como-funciona", label: "Cómo funciona" },
+        { href: "/#preguntas", label: "Preguntas" },
+      ]
+    : [
+        { href: "/demo", label: "El complejo" },
+        { href: "/reservar", label: "Reservar cancha" },
+        { href: "/mis-reservas", label: "Mi reserva" },
+      ];
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-navy-900/95 text-white backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-3">
-          <Image
-            src="/images/diagonal logo.jpg"
-            alt="La Diagonal"
-            width={40}
-            height={40}
-            className="rounded-md"
-            priority
-          />
-          <span className="font-display text-lg tracking-wide uppercase">
-            La Diagonal
+    <header className="cm-header">
+      <a className="cm-skip" href="#contenido">
+        Saltar al contenido
+      </a>
+      <div className="cm-header-inner">
+        <Link
+          href={marketing ? "/" : "/demo"}
+          className="cm-brand"
+          aria-label={
+            marketing ? "Cancha Manager, inicio" : "Complejo de demo, inicio"
+          }
+        >
+          <BrandMark />
+          <span translate="no">
+            Cancha<span className="font-normal">Manager</span>
+            <small>
+              {marketing ? "EL JUEGO, EN ORDEN." : "COMPLEJO DE DEMOSTRACIÓN"}
+            </small>
           </span>
         </Link>
-
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav
+          aria-label="Principal"
+          className="hidden items-center gap-7 text-sm font-medium lg:flex"
+        >
           {links.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="rounded-lg px-3 py-2 text-sm text-white/80 transition hover:bg-white/10 hover:text-lime-400"
-            >
+            <Link className="cm-nav-link" key={link.href} href={link.href}>
               {link.label}
             </Link>
           ))}
         </nav>
-
-        <div className="hidden items-center gap-2 md:flex">
-          <Button asChild variant="secondary" size="sm">
-            <a href="tel:+543816643122">
-              <PhoneIcon data-icon="inline-start" />
-              Llamar
-            </a>
-          </Button>
-          <Button asChild size="sm">
-            <Link href="/reservar">Reservar cancha</Link>
-          </Button>
-        </div>
-
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button
-              variant="secondary"
-              size="icon"
-              className="md:hidden"
-              aria-label="Abrir menú"
-            >
-              <MenuIcon />
-            </Button>
-          </SheetTrigger>
-          <SheetContent
-            side="right"
-            className="gap-0 border-l border-white/10 bg-navy-900 p-0 text-white"
+        <div className="flex items-center gap-3">
+          <Link
+            href={marketing ? "/demo" : "/"}
+            className="hidden text-sm font-semibold hover:underline sm:block"
           >
-            <SheetHeader className="border-b border-white/10 px-6 py-5">
-              <SheetTitle className="font-display text-lg tracking-wide text-white uppercase">
-                Menú
-              </SheetTitle>
-              <SheetDescription className="text-white/60">
-                Complejo Deportivo La Diagonal
-              </SheetDescription>
-            </SheetHeader>
-
-            <nav className="flex flex-1 flex-col gap-1 px-4 py-5">
-              {links.map((link) => {
-                const Icon = link.icon;
-                return (
+            {marketing ? "Probar demo" : "Conocer el producto"}
+          </Link>
+          <a
+            className="cm-button cm-button-dark hidden sm:inline-flex"
+            href={marketing ? BRAND.contact : "/reservar"}
+            {...(marketing ? { target: "_blank", rel: "noreferrer" } : {})}
+          >
+            {marketing ? "Solicitar demo" : "Elegir turno"}
+            <ArrowUpRightIcon aria-hidden="true" className="size-4" />
+          </a>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button
+                className="lg:hidden"
+                variant="outline"
+                size="icon"
+                aria-label="Abrir menú"
+              >
+                <MenuIcon aria-hidden="true" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>Cancha Manager</SheetTitle>
+                <SheetDescription>
+                  {marketing
+                    ? "Tu complejo, mejor conectado."
+                    : "Estás recorriendo un complejo ficticio."}
+                </SheetDescription>
+              </SheetHeader>
+              <nav className="flex flex-col gap-2 p-5" aria-label="Menú móvil">
+                {[
+                  ...links,
+                  {
+                    href: marketing ? "/demo" : "/",
+                    label: marketing ? "Probar demo" : "Conocer el producto",
+                  },
+                ].map((link) => (
                   <SheetClose asChild key={link.href}>
                     <Link
+                      className="rounded-lg px-3 py-3 hover:bg-muted"
                       href={link.href}
-                      className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-base text-white/90 transition-colors hover:bg-white/10 hover:text-lime-400 active:bg-white/15"
                     >
-                      <Icon className="size-5 shrink-0 text-lime-400/80" />
-                      <span>{link.label}</span>
+                      {link.label}
                     </Link>
                   </SheetClose>
-                );
-              })}
-            </nav>
-
-            <div className="mt-auto space-y-3 border-t border-white/10 px-4 py-5">
-              <SheetClose asChild>
-                <Button asChild className="h-12 w-full text-base">
-                  <Link href="/reservar">Reservar cancha</Link>
-                </Button>
-              </SheetClose>
-              <SheetClose asChild>
-                <Button
-                  asChild
-                  variant="secondary"
-                  className="h-11 w-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+                ))}
+                <a
+                  href={BRAND.contact}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="cm-button cm-button-dark mt-3"
                 >
-                  <a href="tel:+543816643122">
-                    <PhoneIcon data-icon="inline-start" />
-                    Llamar
-                  </a>
-                </Button>
-              </SheetClose>
-            </div>
-          </SheetContent>
-        </Sheet>
+                  Solicitar demo
+                </a>
+              </nav>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
     </header>
   );

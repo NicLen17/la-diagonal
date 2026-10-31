@@ -10,20 +10,14 @@ import type {
 import { BLOCKING_STATUSES } from "@/lib/data/types";
 import { resolvePrice } from "./pricing";
 
-function parseTimeOnDate(dateIso: string, time: string): Date {
-  const base = new Date(dateIso);
-  const [h, m] = time.split(":").map(Number);
-  const d = new Date(base);
-  d.setHours(h, m, 0, 0);
-  // closesAt "00:00" means midnight end-of-day → next day 00:00
-  if (time === "00:00") {
-    d.setDate(d.getDate() + 1);
-    d.setHours(0, 0, 0, 0);
-  }
-  return d;
-}
+import { venueDateKey, venueDateTime, venueTime } from "./venue-time";
 
-function rangesOverlap(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date): boolean {
+function rangesOverlap(
+  aStart: Date,
+  aEnd: Date,
+  bStart: Date,
+  bEnd: Date,
+): boolean {
   return aStart < bEnd && aEnd > bStart;
 }
 
@@ -35,13 +29,15 @@ export function generateSlots(params: {
   closures: Closure[];
   priceRules: PriceRule[];
 }): Slot[] {
-  const { court, date, venueHours, reservations, closures, priceRules } = params;
-  const day = date.getDay();
+  const { court, date, venueHours, reservations, closures, priceRules } =
+    params;
+  const day = new Date(`${venueDateKey(date)}T12:00:00Z`).getUTCDay();
   const hours = venueHours.find((h) => h.dayOfWeek === day);
   if (!hours) return [];
 
-  const dayStart = parseTimeOnDate(date.toISOString(), hours.opensAt);
-  const dayEnd = parseTimeOnDate(date.toISOString(), hours.closesAt);
+  const dayStart = venueDateTime(venueDateKey(date), hours.opensAt);
+  let dayEnd = venueDateTime(venueDateKey(date), hours.closesAt);
+  if (dayEnd <= dayStart) dayEnd = new Date(dayEnd.getTime() + 86400000);
   const durationMs = court.slotDurationMinutes * 60_000;
   const slots: Slot[] = [];
 
@@ -67,8 +63,7 @@ export function generateSlots(params: {
     let reason: Slot["reason"];
     if (blockingReservation) {
       available = false;
-      reason =
-        blockingReservation.status === "hold" ? "hold" : "reservation";
+      reason = blockingReservation.status === "hold" ? "hold" : "reservation";
     } else if (blockingClosure) {
       available = false;
       reason = "closure";
@@ -104,9 +99,5 @@ export function summarizeCourtAvailability(
 }
 
 export function formatTimeLabel(iso: string): string {
-  return new Date(iso).toLocaleTimeString("es-AR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  return venueTime(new Date(iso));
 }

@@ -14,18 +14,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import type { ReservationWithDetails } from "@/lib/data/types";
-import {
-  PAYMENT_LABELS,
-  SPORT_LABELS,
-  STATUS_LABELS,
-} from "@/lib/data/types";
+import { PAYMENT_LABELS, SPORT_LABELS, STATUS_LABELS } from "@/lib/data/types";
 import { formatTimeLabel } from "@/lib/services/availability";
 import { formatArs } from "@/lib/services/pricing";
 import { lookupReservationAction } from "@/lib/services/reservations";
@@ -69,7 +61,7 @@ export function LookupForm() {
           <CardHeader>
             <CardTitle>Buscar reserva</CardTitle>
             <CardDescription>
-              El código aparece en la confirmación (ej. LD-ABC123).
+              El código aparece en la confirmación (ej. CM-ABC123).
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -80,7 +72,8 @@ export function LookupForm() {
                   <Input
                     id="code"
                     name="code"
-                    placeholder="LD-XXXXXX"
+                    spellCheck={false}
+                    placeholder="CM-XXXXXX"
                     autoComplete="off"
                     required
                   />
@@ -99,7 +92,10 @@ export function LookupForm() {
                 <Button type="submit" className="w-full" disabled={isPending}>
                   {isPending ? (
                     <>
-                      <Loader2Icon className="animate-spin" data-icon="inline-start" />
+                      <Loader2Icon
+                        className="animate-spin"
+                        data-icon="inline-start"
+                      />
                       Buscando…
                     </>
                   ) : (
@@ -151,7 +147,8 @@ function ReservationSummary({
       </p>
       <p>
         {formatTimeLabel(reservation.startsAt)} –{" "}
-        {formatTimeLabel(reservation.endsAt)} · {formatArs(reservation.priceArs)}
+        {formatTimeLabel(reservation.endsAt)} ·{" "}
+        {formatArs(reservation.priceArs)}
       </p>
       <p className="text-muted-foreground">
         {PAYMENT_LABELS[reservation.paymentMethod]}

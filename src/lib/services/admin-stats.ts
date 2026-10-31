@@ -1,23 +1,19 @@
 import type { ReservationWithDetails } from "@/lib/data/types";
+import { venueDayRange, venueDateKey, venueTime } from "./venue-time";
 
 function startOfDay(date: Date): Date {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
+  return venueDayRange(date).start;
 }
 
 function endOfDay(date: Date): Date {
-  const d = new Date(date);
-  d.setHours(23, 59, 59, 999);
-  return d;
+  return new Date(venueDayRange(date).end.getTime() - 1);
 }
 
 function startOfWeek(date: Date): Date {
   const d = startOfDay(date);
-  const day = d.getDay();
+  const day = new Date(`${venueDateKey(date)}T12:00:00Z`).getUTCDay();
   const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  return d;
+  return new Date(d.getTime() + diff * 86400000);
 }
 
 function endOfWeek(date: Date): Date {
@@ -62,7 +58,7 @@ export function computeDashboardStats(
 
   const hourCounts = new Map<number, number>();
   for (const r of confirmedThisWeek) {
-    const hour = new Date(r.startsAt).getHours();
+    const hour = Number(venueTime(new Date(r.startsAt)).split(":")[0]);
     hourCounts.set(hour, (hourCounts.get(hour) ?? 0) + 1);
   }
 

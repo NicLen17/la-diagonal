@@ -1,130 +1,43 @@
-# La Diagonal — Booking Platform
+# Cancha Manager
 
-Plataforma de reservas para complejos deportivos: landing de alto rendimiento, mapa interactivo del predio y panel de administración con builder de canchas. Primer cliente de referencia: **Complejo La Diagonal** (Tafí Viejo, Tucumán), con arquitectura multi-sede preparada para escalar a más clientes.
+Producto para complejos deportivos: landing personalizada, reservas y administración. La marca provisional usa verdes y blancos. La demo representa un complejo ficticio; no es un caso de éxito ni recibe pagos reales.
 
-## Qué incluye
+## Arranque
 
-| Área | Descripción |
-|------|-------------|
-| **Landing** | Hero, deportes, cómo funciona, preview del mapa, servicios, opiniones, contacto, SEO + JSON-LD |
-| **Reservas** | Mapa del predio, filtros en URL, hold 15 min, formulario, pago (efectivo / seña / transferencia), confirmación + WhatsApp |
-| **Mis reservas** | Consulta por código de reserva + teléfono |
-| **Admin** | Dashboard, builder del mapa, canchas, reservas, horarios, precios, configuración de sede |
+Instalá con npm ci. Configurá .env.local con SUPABASE_URL, SUPABASE_SECRET_KEY, DATA_ADAPTER=supabase, ADMIN_PASSCODE (mínimo 12 caracteres), TZ=America/Argentina/Tucuman y NEXT_PUBLIC_SITE_URL. Luego ejecutá npm run dev.
 
-## Stack
+La clave de servidor solo se utiliza desde Next.js; nunca debe llevar el prefijo NEXT_PUBLIC_ ni subirse a Git. La sesión de administración está firmada y expira a las 12 horas.
 
-- **Framework:** Next.js 16 (App Router) + TypeScript strict
-- **UI:** Tailwind CSS v4 + shadcn/ui
-- **Animaciones:** Motion (estado) + CSS scroll-driven (decorativo)
-- **Validación:** Zod · **Fechas:** date-fns · **Teléfonos:** libphonenumber-js
-- **Datos:** capa mock intercambiable (`DATA_ADAPTER=mock`); schema Supabase documentado para producción
+## Recorrido
 
-## Requisitos
+- /: landing comercial y contacto para solicitar demo, sin precios públicos.
+- /demo: complejo ficticio con 2 canchas de fútbol 5, 1 de fútbol 7 y 2 de pádel.
+- /reservar: fecha, deporte, horario, mapa o lista; reserva temporal de 15 minutos.
+- /reservar/confirmar: datos, modalidad de pago y comprobante real de hasta 3 MB.
+- /reserva/[code]: resumen privado, estado y enlace a WhatsApp con envío manual.
+- /mis-reservas: recuperar acceso con código y teléfono completo.
+- /admin: gestión privada; las reservas nuevas aparecen pendientes.
+- /admin/reservas: revisar el comprobante y confirmar o cancelar. Se actualiza cada 15 segundos mientras la pestaña está visible.
+- /admin/configuracion: configuración y restablecimiento manual de la demo, con confirmación explícita.
 
-- Node.js 20+
-- npm
+El mensaje de WhatsApp no se envía automáticamente y no adjunta archivos. La reserva ya existe antes de abrir WhatsApp. La confirmación la realiza administración; el sistema no verifica pagos bancarios.
 
-## Arranque local
+## Persistencia
 
-```bash
-npm install
-cp .env.example .env.local   # opcional: ajustar passcode admin
-npm run dev
-```
+Proyecto Supabase dedicado: fhrfnpjlamvbqvuprbrn. Migraciones versionadas en supabase/migrations. Tablas normalizadas con RLS y acceso solo para el servidor; bucket privado cm-receipts. Las reservas concurrentes se protegen con una restricción de exclusión en Postgres. El modo mock solo se permite durante desarrollo.
 
-Abrí [http://localhost:3000](http://localhost:3000).
+## Comprobaciones
 
-### Variables de entorno
+- npm run lint
+- npx tsc --noEmit (ejecutar npx next typegen antes del primer chequeo)
+- npm run test:services
+- node --env-file=.env.local scripts/test-persistence.mjs (solo contra la demo; limpia sus propios datos)
+- npm run build
 
-| Variable | Default | Descripción |
-|----------|---------|-------------|
-| `ADMIN_PASSCODE` | `diagonal2026` | Passcode del panel admin (fase mock) |
-| `DATA_ADAPTER` | `mock` | `mock` \| `supabase` (cuando esté implementado) |
+## Alcance
 
-### Admin
-
-- URL: [/admin/login](http://localhost:3000/admin/login)
-- Passcode: valor de `ADMIN_PASSCODE` en `.env.local`
-
-## Rutas
-
-| Ruta | Descripción |
-|------|-------------|
-| `/` | Landing marketing |
-| `/reservar` | Mapa del predio + filtros (`?fecha=&deporte=&hora=&cancha=`) |
-| `/reservar/confirmar` | Datos del reservante + método de pago |
-| `/reserva/[code]` | Confirmación + CTA WhatsApp |
-| `/mis-reservas` | Lookup por código + teléfono |
-| `/admin` | Dashboard KPIs |
-| `/admin/mapa` | Builder del predio (drag-and-drop) |
-| `/admin/canchas` | CRUD de canchas |
-| `/admin/reservas` | Gestión de reservas y comprobantes |
-| `/admin/horarios` | Plantillas horarias y cierres |
-| `/admin/precios` | Reglas de precio + preview |
-| `/admin/configuracion` | Sede, seña, datos bancarios, WhatsApp |
-
-## Estructura del proyecto
-
-```
-src/
-├── app/                    # Rutas App Router (marketing, reservas, admin)
-├── components/
-│   ├── landing/            # Secciones de la landing
-│   ├── booking/            # Flujo de reserva
-│   ├── map/                # Renderer compartido del plano
-│   ├── admin/              # Panel de administración
-│   └── ui/                 # Primitivas shadcn
-├── hooks/                  # use-draggable-rect, use-mobile
-└── lib/
-    ├── data/               # types, schemas, ports, mock adapter
-    └── services/           # availability, pricing, reservations, whatsapp
-docs/                       # Arquitectura, schema SQL, ADRs
-documentacion/              # Negocio, comercial, PRD
-CONTEXT.md                  # Glosario de dominio
-```
-
-## Scripts
-
-```bash
-npm run dev          # Servidor de desarrollo
-npm run build        # Build de producción
-npm run start        # Servidor de producción
-npm run lint         # ESLint
-npm run test:services # Tests de availability y pricing
-```
-
-## Fases del producto
-
-| Fase | Estado | Alcance |
-|------|--------|---------|
-| **1 — MVP público** | En curso | Landing + reservas end-to-end sobre mock |
-| **2 — Admin completo** | En curso | Builder, precios, horarios, dashboard |
-| **3 — Supabase** | Documentado | Adapter real, Auth, RLS, pg_cron |
+Es una demostración persistente de una sede. El aislamiento y alta de clientes reales, roles por organización, suscripciones y pasarela de pagos quedan para una etapa posterior. No promocionar esas funciones como disponibles.
 
 ## Documentación
 
-### Producto
-
-- [`documentacion/producto/prd.md`](./documentacion/producto/prd.md) — Product Requirements Document
-- [`CONTEXT.md`](./CONTEXT.md) — Glosario de dominio
-
-### Ingeniería
-
-- [`docs/architecture.md`](./docs/architecture.md) — Capas, flujo de datos, migración mock → Supabase
-- [`docs/schema.sql`](./docs/schema.sql) — Schema Postgres + RLS + RPCs + pg_cron
-- [`docs/adr/`](./docs/adr/) — Architecture Decision Records
-
-### Negocio y comercial
-
-- [`documentacion/`](./documentacion/) — Análisis de negocio, precios, validación MVP, speech de venta
-
-## Próxima iteración (Supabase)
-
-1. Aplicar `docs/schema.sql` en el proyecto Supabase
-2. Implementar `lib/data/supabase/` respetando los ports existentes
-3. Configurar `DATA_ADAPTER=supabase`
-4. Reemplazar passcode admin por Supabase Auth + `profiles.role`
-
-## Licencia
-
-Proyecto privado — Complejo La Diagonal / Red de Complejos.
+[Requisitos](docs/cancha-manager-requirements.md), [glosario](GLOSSARY.md), [arquitectura](docs/architecture.md) y [decisiones](docs/adr/0006-persistent-sales-demo.md).

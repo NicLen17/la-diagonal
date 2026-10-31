@@ -8,29 +8,28 @@ import type {
   VenueHours,
 } from "../types";
 
-export const DEFAULT_VENUE_ID = "venue-tafi-viejo";
+export const DEFAULT_VENUE_ID = "venue-cancha-manager-demo";
 
 export const seedVenue: Venue = {
   id: DEFAULT_VENUE_ID,
-  slug: "tafi-viejo",
-  name: "Complejo Deportivo La Diagonal",
-  address: "Cabo Oscar Quipildor",
+  slug: "cancha-manager-demo",
+  name: "Complejo Cancha Manager · Demo",
+  address: "Predio de demostración",
   city: "Tafí Viejo",
   province: "Tucumán",
-  phoneE164: "5493816643122",
-  whatsappE164: "5493816643122",
+  phoneE164: "5493813379225",
+  whatsappE164: "5493813379225",
   timezone: "America/Argentina/Tucuman",
   planWidthM: 120,
   planLengthM: 80,
   depositPercent: 10,
-  bankAlias: "ladiagonal.tafi",
-  bankCbu: "0000003100010000000001",
-  bankHolder: "Complejo Deportivo La Diagonal",
+  bankAlias: "DEMO.NO.TRANSFERIR",
+  bankCbu: "0000000000000000000000",
+  bankHolder: "Complejo Cancha Manager · Demo",
   holdTtlMinutes: 15,
-  instagramUrl: "https://www.instagram.com/ladiagonal.reddecomplejos/",
-  facebookUrl: "https://www.facebook.com/ladiagonalcomplejo/?locale=es_LA",
-  whatsappContactUrl:
-    "https://api.whatsapp.com/message/QRV7WVNQRM4AC1?autoload=1&app_absent=0",
+  instagramUrl: "",
+  facebookUrl: "",
+  whatsappContactUrl: "https://wa.me/5493813379225",
 };
 
 export const seedHours: VenueHours[] = [0, 1, 2, 3, 4, 5, 6].map((day) => ({
@@ -41,7 +40,7 @@ export const seedHours: VenueHours[] = [0, 1, 2, 3, 4, 5, 6].map((day) => ({
   closesAt: "00:00",
 }));
 
-export const seedCourts: Court[] = [
+const allSeedCourts: Court[] = [
   {
     id: "court-f5-1",
     venueId: DEFAULT_VENUE_ID,
@@ -83,7 +82,8 @@ export const seedCourts: Court[] = [
     venueId: DEFAULT_VENUE_ID,
     name: "Cancha F7",
     sport: "futbol_7",
-    description: "Cancha de fútbol 7 con espacio amplio y arcos reglamentarios.",
+    description:
+      "Cancha de fútbol 7 con espacio amplio y arcos reglamentarios.",
     surface: "cesped_sintetico",
     hasLights: true,
     slotDurationMinutes: 60,
@@ -188,6 +188,16 @@ export const seedCourts: Court[] = [
   },
 ];
 
+export const seedCourts = allSeedCourts.filter((c) =>
+  [
+    "court-f5-1",
+    "court-f5-2",
+    "court-f7-1",
+    "court-padel-1",
+    "court-padel-2",
+  ].includes(c.id),
+);
+
 export const seedPriceRules: PriceRule[] = [
   {
     id: "rule-night",
@@ -231,16 +241,21 @@ export const seedCustomers: Customer[] = [
 ];
 
 function tomorrowAt(hour: number, minute = 0): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  d.setHours(hour, minute, 0, 0);
-  return d.toISOString();
+  const day = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Argentina/Tucuman",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(Date.now() + 86400000));
+  return new Date(
+    `${day}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00-03:00`,
+  ).toISOString();
 }
 
 export const seedReservations: Reservation[] = [
   {
     id: "res-demo-1",
-    code: "LD-DEMO01",
+    code: "CM-DEMO01",
     venueId: DEFAULT_VENUE_ID,
     courtId: "court-f5-1",
     customerId: "cust-demo-1",
@@ -258,20 +273,39 @@ export const seedReservations: Reservation[] = [
   },
   {
     id: "res-demo-2",
-    code: "LD-DEMO02",
+    code: "CM-DEMO02",
     venueId: DEFAULT_VENUE_ID,
     courtId: "court-padel-1",
     customerId: "cust-demo-1",
-    startsAt: tomorrowAt(19),
-    endsAt: tomorrowAt(20, 30),
+    startsAt: tomorrowAt(19, 30),
+    endsAt: tomorrowAt(21),
     status: "pending",
     holdExpiresAt: null,
-    paymentMethod: "deposit",
+    paymentMethod: "cash",
     priceArs: 26000,
-    depositArs: 2600,
-    receiptFileName: "comprobante-demo.jpg",
+    depositArs: 0,
+    receiptFileName: null,
     notes: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   },
 ];
+
+export function buildDemoSeed() {
+  const now = new Date().toISOString();
+  return {
+    venue: seedVenue,
+    courts: seedCourts,
+    hours: seedHours,
+    priceRules: seedPriceRules,
+    closures: seedClosures,
+    customers: seedCustomers.map((c) => ({ ...c, createdAt: now })),
+    reservations: seedReservations.map((r, i) => ({
+      ...r,
+      startsAt: i === 0 ? tomorrowAt(20) : tomorrowAt(19, 30),
+      endsAt: tomorrowAt(21),
+      createdAt: now,
+      updatedAt: now,
+    })),
+  };
+}

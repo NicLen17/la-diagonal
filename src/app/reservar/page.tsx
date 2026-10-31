@@ -11,7 +11,8 @@ import { parseDateInput, toDateInputValue } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Reservar",
-  description: "Elegí fecha, deporte y horario para reservar tu cancha en La Diagonal.",
+  description:
+    "Elegí fecha, deporte y horario para reservar tu cancha en Cancha Manager.",
 };
 
 export default async function ReservarPage({
@@ -29,7 +30,9 @@ export default async function ReservarPage({
     typeof params.vista === "string" ? params.vista : undefined,
   );
   const cancha =
-    typeof params.cancha === "string" && params.cancha ? params.cancha : undefined;
+    typeof params.cancha === "string" && params.cancha
+      ? params.cancha
+      : undefined;
 
   const date = parseDateInput(fecha);
   const availability = await getAvailabilityForDate(date.toISOString());

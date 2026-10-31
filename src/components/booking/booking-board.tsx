@@ -75,7 +75,9 @@ function getNextSevenDays() {
       isoDate,
       dayLabel: label,
       dayNumber: d.getDate(),
-      monthLabel: d.toLocaleDateString("es-AR", { month: "short" }).toUpperCase(),
+      monthLabel: d
+        .toLocaleDateString("es-AR", { month: "short" })
+        .toUpperCase(),
     });
   }
   return days;
@@ -97,9 +99,9 @@ export function BookingBoard({
   const [selectedCourtId, setSelectedCourtId] = useState<string | null>(
     initialCancha ?? null,
   );
-  const [selectedSlotStartsAt, setSelectedSlotStartsAt] = useState<string | null>(
-    null,
-  );
+  const [selectedSlotStartsAt, setSelectedSlotStartsAt] = useState<
+    string | null
+  >(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const quickDays = useMemo(() => getNextSevenDays(), []);
@@ -137,8 +139,7 @@ export function BookingBoard({
 
   const selectedCourt = courts.find((c) => c.id === selectedCourtId) ?? null;
   const courtSlots = useMemo(
-    () =>
-      selectedCourtId ? (slotsByCourt[selectedCourtId] ?? []) : [],
+    () => (selectedCourtId ? (slotsByCourt[selectedCourtId] ?? []) : []),
     [selectedCourtId, slotsByCourt],
   );
   const availableCourtSlots = useMemo(
@@ -148,7 +149,9 @@ export function BookingBoard({
 
   const activeSlot = useMemo(() => {
     if (selectedSlotStartsAt) {
-      return courtSlots.find((s) => s.startsAt === selectedSlotStartsAt) ?? null;
+      return (
+        courtSlots.find((s) => s.startsAt === selectedSlotStartsAt) ?? null
+      );
     }
     if (initialHora) {
       const match = courtSlots.find(
@@ -157,12 +160,7 @@ export function BookingBoard({
       if (match) return match;
     }
     return availableCourtSlots[0] ?? null;
-  }, [
-    availableCourtSlots,
-    courtSlots,
-    initialHora,
-    selectedSlotStartsAt,
-  ]);
+  }, [availableCourtSlots, courtSlots, initialHora, selectedSlotStartsAt]);
 
   const sportOptions = useMemo(() => {
     const sports = new Set(courts.map((c) => c.sport));
@@ -273,7 +271,8 @@ export function BookingBoard({
                 Disponibilidad en Vivo
               </h1>
               <p className="mt-0.5 text-xs text-slate-300 sm:text-sm">
-                Seleccioná fecha, deporte y el horario que mejor le quede a tu equipo.
+                Seleccioná fecha, deporte y el horario que mejor le quede a tu
+                equipo.
               </p>
             </div>
 
@@ -286,7 +285,7 @@ export function BookingBoard({
                   "h-10 px-4 text-xs font-semibold",
                   initialVista === "mapa"
                     ? "bg-lime-400 font-bold text-navy-950 hover:bg-lime-300"
-                    : "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                    : "border-white/15 bg-white/5 text-white hover:bg-white/10",
                 )}
                 onClick={() => updateUrl({ vista: "mapa" })}
               >
@@ -301,7 +300,7 @@ export function BookingBoard({
                   "h-10 px-4 text-xs font-semibold",
                   initialVista === "lista"
                     ? "bg-lime-400 font-bold text-navy-950 hover:bg-lime-300"
-                    : "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                    : "border-white/15 bg-white/5 text-white hover:bg-white/10",
                 )}
                 onClick={() => updateUrl({ vista: "lista" })}
               >
@@ -346,7 +345,7 @@ export function BookingBoard({
                       "flex min-w-[72px] flex-col items-center justify-center rounded-2xl border p-2.5 transition-all duration-200 active:scale-95",
                       isSelected
                         ? "border-lime-400 bg-lime-400 text-navy-950 shadow-lg shadow-lime-400/20 font-bold"
-                        : "border-white/10 bg-white/5 text-white hover:border-white/25 hover:bg-white/10"
+                        : "border-white/10 bg-white/5 text-white hover:border-white/25 hover:bg-white/10",
                     )}
                   >
                     <span className="text-[10px] uppercase font-bold tracking-wider opacity-80">
@@ -372,12 +371,14 @@ export function BookingBoard({
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => updateUrl({ deporte: undefined, cancha: undefined })}
+                onClick={() =>
+                  updateUrl({ deporte: undefined, cancha: undefined })
+                }
                 className={cn(
                   "rounded-xl border px-3.5 py-2 text-xs font-semibold transition-all active:scale-95",
                   !initialDeporte
                     ? "border-lime-400 bg-lime-400/20 text-lime-400 font-bold"
-                    : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
+                    : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white",
                 )}
               >
                 Todos los deportes
@@ -389,12 +390,14 @@ export function BookingBoard({
                   <button
                     key={sport}
                     type="button"
-                    onClick={() => updateUrl({ deporte: sport, cancha: undefined })}
+                    onClick={() =>
+                      updateUrl({ deporte: sport, cancha: undefined })
+                    }
                     className={cn(
                       "rounded-xl border px-3.5 py-2 text-xs font-semibold transition-all active:scale-95",
                       isSelected
                         ? "border-lime-400 bg-lime-400/20 text-lime-400 font-bold"
-                        : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
+                        : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white",
                     )}
                   >
                     {SPORT_LABELS[sport]}
@@ -414,7 +417,9 @@ export function BookingBoard({
                 {initialHora ? (
                   <button
                     type="button"
-                    onClick={() => updateUrl({ hora: undefined, cancha: undefined })}
+                    onClick={() =>
+                      updateUrl({ hora: undefined, cancha: undefined })
+                    }
                     className="text-xs text-rose-400 hover:underline"
                   >
                     Limpiar horario
@@ -439,7 +444,7 @@ export function BookingBoard({
                         "rounded-xl border px-3 py-2 text-xs font-medium transition-all shrink-0 active:scale-95",
                         isSelected
                           ? "border-lime-400 bg-lime-400 text-navy-950 font-bold shadow-md shadow-lime-400/20"
-                          : "border-white/10 bg-white/5 text-slate-300 hover:border-lime-400/50 hover:bg-white/10 hover:text-white"
+                          : "border-white/10 bg-white/5 text-slate-300 hover:border-lime-400/50 hover:bg-white/10 hover:text-white",
                       )}
                     >
                       <ClockIcon className="size-3 inline-block mr-1 opacity-70" />
@@ -451,7 +456,8 @@ export function BookingBoard({
             </div>
           ) : (
             <p className="mt-4 text-xs text-amber-300">
-              No hay turnos disponibles para esta combinación. Probá cambiando la fecha o el deporte.
+              No hay turnos disponibles para esta combinación. Probá cambiando
+              la fecha o el deporte.
             </p>
           )}
         </div>
@@ -547,7 +553,10 @@ function CourtDetailPanel({
               <Badge className="bg-lime-400/20 text-lime-400 border-lime-400/30 text-[10px] font-bold uppercase">
                 {SPORT_LABELS[court.sport]}
               </Badge>
-              <Badge variant="outline" className="border-white/20 text-slate-300 text-[10px]">
+              <Badge
+                variant="outline"
+                className="border-white/20 text-slate-300 text-[10px]"
+              >
                 Sintético Pro
               </Badge>
             </div>
@@ -589,15 +598,19 @@ function CourtDetailPanel({
             Turnos Disponibles ({availableSlots.length})
           </p>
           <span className="text-[10px] text-lime-400 font-semibold">
-            Confirmación inmediata
+            Revisión del complejo
           </span>
         </div>
 
         {availableSlots.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 p-6 text-center">
             <ClockIcon className="size-8 text-slate-500 mb-2" />
-            <p className="text-sm font-semibold text-slate-300">Sin turnos libres hoy</p>
-            <p className="text-xs text-slate-500 mt-1">Probá seleccionando otra fecha en el calendario superior.</p>
+            <p className="text-sm font-semibold text-slate-300">
+              Sin turnos libres hoy
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
+              Probá seleccionando otra fecha en el calendario superior.
+            </p>
           </div>
         ) : (
           <div
@@ -621,19 +634,21 @@ function CourtDetailPanel({
                     "flex w-full items-center justify-between rounded-2xl border p-3.5 text-left text-sm transition-all duration-200 active:scale-[0.98]",
                     isActive
                       ? "border-lime-400 bg-lime-400/20 text-white ring-2 ring-lime-400 shadow-md shadow-lime-400/10"
-                      : "border-white/10 bg-white/5 text-slate-200 hover:border-lime-400/40 hover:bg-white/10"
+                      : "border-white/10 bg-white/5 text-slate-200 hover:border-lime-400/40 hover:bg-white/10",
                   )}
                 >
                   <div className="flex items-center gap-2.5">
                     <div
                       className={cn(
                         "size-3 rounded-full",
-                        isActive ? "bg-lime-400 animate-pulse" : "bg-slate-500"
+                        isActive ? "bg-lime-400 animate-pulse" : "bg-slate-500",
                       )}
                     />
                     <div>
                       <span className="font-bold text-base">{label} hs</span>
-                      <span className="text-xs text-slate-400 ml-1.5">hasta {endLabel}</span>
+                      <span className="text-xs text-slate-400 ml-1.5">
+                        hasta {endLabel}
+                      </span>
                     </div>
                   </div>
 
@@ -643,7 +658,7 @@ function CourtDetailPanel({
                       "text-xs font-bold px-3 py-1",
                       isActive
                         ? "bg-lime-400 text-navy-950"
-                        : "bg-white/10 text-lime-400 border border-lime-400/20"
+                        : "bg-white/10 text-lime-400 border border-lime-400/20",
                     )}
                   >
                     {formatArs(slot.priceArs)}
@@ -661,7 +676,8 @@ function CourtDetailPanel({
           <div className="mb-3 flex items-center justify-between text-xs">
             <span className="text-slate-300">Turno elegido:</span>
             <span className="font-bold text-white">
-              {formatTimeLabel(activeSlot.startsAt)} hs • {formatArs(activeSlot.priceArs)}
+              {formatTimeLabel(activeSlot.startsAt)} hs •{" "}
+              {formatArs(activeSlot.priceArs)}
             </span>
           </div>
         ) : null}
