@@ -22,7 +22,7 @@ El usuario confirmó demo persistente y privada, WhatsApp manual a su número y 
 
 - Reutilizar Vercel y el nuevo proyecto Supabase personal fhrfnpjlamvbqvuprbrn.
 - Confirmación manual del administrador y comprobantes reales privados; datos bancarios ficticios en la demo.
-- Complejo Cancha Manager · Demo con 2 canchas de fútbol 5, 1 de fútbol 7 y 2 de pádel.
+- Complejo Cancha Manager · Demo con 8 canchas: 2 de fútbol 5, 1 de fútbol 7, 1 de fútbol 9, 1 de fútbol 11, 2 de pádel y 1 multipropósito de handball/futsal.
 - Administración privada y restablecimiento manual entre visitas.
 - WhatsApp 3813379225 para reservas de demo y contacto comercial.
 - El usuario confirmó el entendimiento compartido y autorizó la implementación.

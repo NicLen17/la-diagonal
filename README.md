@@ -11,7 +11,7 @@ La clave de servidor solo se utiliza desde Next.js; nunca debe llevar el prefijo
 ## Recorrido
 
 - /: landing comercial y contacto para solicitar demo, sin precios públicos.
-- /demo: complejo ficticio con 2 canchas de fútbol 5, 1 de fútbol 7 y 2 de pádel.
+- /demo: complejo ficticio con 2 canchas de fútbol 5, 1 de fútbol 7, 1 de fútbol 9, 1 de fútbol 11, 2 de pádel y 1 multipropósito de handball/futsal.
 - /reservar: fecha, deporte, horario, mapa o lista; reserva temporal de 15 minutos.
 - /reservar/confirmar: datos, modalidad de pago y comprobante real de hasta 3 MB.
 - /reserva/[code]: resumen privado, estado y enlace a WhatsApp con envío manual.
